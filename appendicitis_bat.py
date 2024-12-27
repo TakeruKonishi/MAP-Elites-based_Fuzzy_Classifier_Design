@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Oct  7 01:04:14 2022
+Created on Thu Jun 14 18:22:00 2024
 
-@author: kawano
+@author: konishi
 """
 
 import subprocess
@@ -42,8 +42,8 @@ if __name__ == "__main__":
 
     requests = [{"trial" : f"{i}_{j}",
                 "dataset" : Dataset, 
-                "jarFile" : "target\MoFGBML-23.0.0-SNAPSHOT-Basic.jar", 
-                "algroithmID" : f"Basic\{Dataset}Basic",
+                "jarFile" : "target\MoFGBML-23.0.0-SNAPSHOT-ME.jar", 
+                "algroithmID" : f"ME\{Dataset}",
                 "parallelCores" : "6",
                 "experimentID" : f"trial{i}{j}",
                 "trainFile" : f"dataset\\{Dataset}\\a{i}_{j}_{Dataset}-10tra.dat",

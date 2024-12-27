@@ -1,6 +1,7 @@
 package cilabo.gbml.algorithm;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -9,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.IntStream;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.uma.jmetal.algorithm.impl.AbstractEvolutionaryAlgorithm;
 import org.uma.jmetal.component.densityestimator.DensityEstimator;
 import org.uma.jmetal.component.densityestimator.impl.CrowdingDistanceDensityEstimator;
@@ -38,8 +40,12 @@ import org.uma.jmetal.util.observable.impl.DefaultObservable;
 import org.w3c.dom.Element;
 
 import cilabo.fuzzy.knowledge.Knowledge;
+import cilabo.fuzzy.rule.impl.Rule_Basic;
 import cilabo.gbml.component.variation.CrossoverAndMutationAndPittsburghLearningVariation;
+import cilabo.gbml.objectivefunction.michigan.RuleLength;
+import cilabo.gbml.objectivefunction.pittsburgh.NumberOfRules;
 import cilabo.gbml.problem.pittsburghFGBML_Problem.AbstractPittsburghFGBML;
+import cilabo.gbml.solution.michiganSolution.impl.MichiganSolution_Basic;
 import cilabo.gbml.solution.pittsburghSolution.PittsburghSolution;
 import cilabo.util.fileoutput.PittsburghSolutionListOutput;
 import xml.XML_TagName;
@@ -75,6 +81,9 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
 	/*Set for the Archive*/
 	private Set<S> ArchivePopulation;
+
+	/*List for the elite*/
+	private List<S> elitePopulation;
 
 	/** Constructor */
 	public HybridMoFGBMLwithNSGAII(
@@ -128,6 +137,9 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
 		/*Set for the Archive*/
 		this.ArchivePopulation = new HashSet<>();
+
+		/*List for the elite*/
+		this.elitePopulation = new ArrayList<>();
 	}
 
 	@Override
@@ -138,12 +150,49 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 		List<S> offspringPopulation;
 		List<S> matingPopulation;
 
+		//各セルのエリート個体を保持するためのマップ
+        Map<Pair<Integer,Integer>, S> eliteMap = new HashMap<>();
+
+        //グリッド幅の設定
+        int ruleNumGridWidth = 1;  //ルール数のグリッド幅
+        int ruleLengthGridWidth = 1;  //総ルール長のグリッド幅
+
 		/* Step 1. 初期個体群生成 - Initialization Population */
 		population = createInitialPopulation();
 		/* Step 2. 初期個体群評価 - Initial Population Evaluation */
 		population = evaluatePopulation(population);
 		/* 未勝利個体削除*/
 		population = removeNoWinnerMichiganSolution(population);
+
+		//初期個体群を特徴空間にマッピングし，エリートを選択
+        for (S solution : population) {
+        	PittsburghSolution<?> copiedSolution = solution.copy();
+            //ルール数と総ルール長を取得
+        	NumberOfRules<S> RuleNumFunc = new NumberOfRules<S>();
+            double ruleNum = RuleNumFunc.function((S) copiedSolution);
+            RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
+            double TotalRuleLength = 0;
+            for (int i = 0; i < copiedSolution.getNumberOfVariables(); i++) {
+                 double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) copiedSolution.getVariable(i));
+                 TotalRuleLength += RuleLength;
+            }
+
+            //グリッド座標を計算
+            int ruleNumIndex = (int)(ruleNum/ruleNumGridWidth);
+            int ruleLengthIndex = (int)(TotalRuleLength/ruleLengthGridWidth);
+
+            //グリッド座標をキーとする
+            Pair<Integer,Integer> key = Pair.of(ruleNumIndex,ruleLengthIndex);
+
+            //エリート選択: 同じセルに既に個体が存在する場合は，より優れた個体で更新（存在しない場合は，新しく個体を配置）
+            eliteMap.compute(key, (k, existingSolution) -> {
+                if (existingSolution == null || copiedSolution.getObjective(0) < existingSolution.getObjective(0)) {
+                    return (S) copiedSolution;
+                } else {
+                    return existingSolution;
+                }
+            });
+        }
 
 		/*生成した個体群をアーカイブに追加*/
 		for (S solution : population) {
@@ -170,14 +219,46 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
 		/* GA loop */
 		while(!isStoppingConditionReached()) {
+
 			/* 親個体選択 - Mating Selection */
 			matingPopulation = selection(population);
 			/* 子個体群生成 - Offspring Generation */
 			offspringPopulation = reproduction(matingPopulation);
-			/* 子個体群評価 - Offsprign Evaluation */
+			/* 子個体群評価 - Offspring Evaluation */
 			offspringPopulation = evaluatePopulation(offspringPopulation);
 			/* 未勝利個体削除*/
 			offspringPopulation = removeNoWinnerMichiganSolution(offspringPopulation);
+
+			//子個体群を特徴空間にマッピングし，エリートを選択
+			for (S solution : population) {
+	        	PittsburghSolution<?> copiedSolution = solution.copy();
+	            //ルール数と総ルール長を取得
+	        	NumberOfRules<S> RuleNumFunc = new NumberOfRules<S>();
+	            double ruleNum = RuleNumFunc.function((S) copiedSolution);
+	            RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
+	            double TotalRuleLength = 0;
+	            for (int i = 0; i < copiedSolution.getNumberOfVariables(); i++) {
+	                 double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) copiedSolution.getVariable(i));
+	                 TotalRuleLength += RuleLength;
+	            }
+
+	            //グリッド座標を計算
+	            int ruleNumIndex = (int)(ruleNum/ruleNumGridWidth);
+	            int ruleLengthIndex = (int)(TotalRuleLength/ruleLengthGridWidth);
+
+	            //グリッド座標をキーとする
+	            Pair<Integer,Integer> key = Pair.of(ruleNumIndex,ruleLengthIndex);
+
+	            //エリート選択: 同じセルに既に個体が存在する場合は，より優れた個体で更新（存在しない場合は，新しく個体を配置）
+	            eliteMap.compute(key, (k, existingSolution) -> {
+	                if (existingSolution == null || copiedSolution.getObjective(0) < existingSolution.getObjective(0)) {
+	                    return (S) copiedSolution;
+	                } else {
+	                    return existingSolution;
+	                }
+	            });
+	        }
+
 			/* 個体群更新・環境選択 - Environmental Selection */
 			population = replacement(population, offspringPopulation);
 
@@ -195,6 +276,9 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 			updateProgress();
 		}
 
+        // エリート個体のみを含むリスト
+        elitePopulation = new ArrayList<>(eliteMap.values());
+
 		/* ===  END  === */
 		totalComputingTime = System.currentTimeMillis() - startTime;
 	}
@@ -209,6 +293,20 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
 	    observable.setChanged();
 	    observable.notifyObservers(algorithmStatusData);
+
+	    String sep = File.separator;
+	    Integer evaluations = (Integer)algorithmStatusData.get("EVALUATIONS");
+
+	    if(evaluations != null) {
+	        new PittsburghSolutionListOutput((List<PittsburghSolution<?>>) this.getResult())
+            .setVarFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("VAR-%d.csv", evaluations), ","))
+            .setFunFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("FUN-%d.csv", evaluations), ","))
+            .print();
+	    }
+		else {
+			JMetalLogger.logger.warning(getClass().getName()
+			+ ": The algorithm has not registered yet any info related to the EVALUATIONS key");
+		}
 	}
 
 
@@ -369,6 +467,11 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 	/*Setter for Archive*/
 	public void setArchivePopulation(Set<S> ArchivePopulation) {
 		this.ArchivePopulation = ArchivePopulation;
+	}
+
+	/*Getter for elite*/
+	public List<S> getelitePopulation(){
+		return elitePopulation;
 	}
 
 }

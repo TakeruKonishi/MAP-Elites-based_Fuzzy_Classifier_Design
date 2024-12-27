@@ -19,6 +19,7 @@ import org.uma.jmetal.operator.mutation.MutationOperator;
 import org.uma.jmetal.problem.Problem;
 import org.uma.jmetal.util.JMetalException;
 import org.uma.jmetal.util.SolutionListUtils;
+import org.uma.jmetal.util.fileoutput.impl.DefaultFileOutputContext;
 import org.uma.jmetal.util.observer.impl.EvaluationObserver;
 import org.uma.jmetal.util.pseudorandom.JMetalRandom;
 
@@ -39,16 +40,18 @@ import cilabo.fuzzy.rule.impl.Rule_Basic;
 import cilabo.gbml.algorithm.HybridMoFGBMLwithNSGAII;
 import cilabo.gbml.objectivefunction.michigan.RuleLength;
 import cilabo.gbml.objectivefunction.pittsburgh.ErrorRate;
+import cilabo.gbml.objectivefunction.pittsburgh.NumberOfRules;
 import cilabo.gbml.operator.crossover.HybridGBMLcrossover;
 import cilabo.gbml.operator.crossover.MichiganCrossover;
 import cilabo.gbml.operator.crossover.PittsburghCrossover;
 import cilabo.gbml.operator.mutation.PittsburghMutation;
-import cilabo.gbml.problem.pittsburghFGBML_Problem.impl.PittsburghFGBML_Basic;
+import cilabo.gbml.problem.pittsburghFGBML_Problem.impl.PittsburghFGBML_NR_RL;
 import cilabo.gbml.solution.michiganSolution.AbstractMichiganSolution;
 import cilabo.gbml.solution.michiganSolution.MichiganSolution.MichiganSolutionBuilder;
 import cilabo.gbml.solution.michiganSolution.impl.MichiganSolution_Basic;
 import cilabo.gbml.solution.pittsburghSolution.impl.PittsburghSolution_Basic;
 import cilabo.main.Consts;
+import cilabo.util.fileoutput.PittsburghSolutionListOutputX;
 import cilabo.utility.Output;
 import cilabo.utility.Parallel;
 import cilabo.utility.Random;
@@ -153,7 +156,7 @@ public class MoFGBML_Basic_Main {
 		int numberOfConstraints_Michigan = 0;
 
 		int numberOfvariables_Pittsburgh = Consts.INITIATION_RULE_NUM;
-		int numberOfObjectives_Pittsburgh = 2;
+		int numberOfObjectives_Pittsburgh = 3;
 		int numberOfConstraints_Pittsburgh = 0;
 
 		RuleBuilder<Rule_Basic, ?, ?> ruleBuilder = new Rule_Basic.RuleBuilder_Basic(
@@ -173,9 +176,9 @@ public class MoFGBML_Basic_Main {
 
 		/* MOP: Multi-objective Optimization Problem */
 		Problem<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> problem =
-				new PittsburghFGBML_Basic<MichiganSolution_Basic<Rule_Basic>>(
+				new PittsburghFGBML_NR_RL<MichiganSolution_Basic<Rule_Basic>>(
 						numberOfvariables_Pittsburgh,
-						numberOfObjectives_Pittsburgh,
+						3,
 						numberOfConstraints_Pittsburgh,
 						train,
 						michiganSolutionBuilder,
@@ -260,6 +263,11 @@ public class MoFGBML_Basic_Main {
         //統合後のリストから非劣解を抽出し，最終的な個体群とする
         List<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> nonDominatedSolutionsARC = SolutionListUtils.getNonDominatedSolutions(mergedList);
 
+		String outputRootDir = Consts.EXPERIMENT_ID_DIR;
+		new PittsburghSolutionListOutputX(nonDominatedSolutionsARC)
+        .setVarFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("VARARC-%d.csv", Consts.TERMINATE_EVALUATION), ","))
+        .print();
+
         //バグ含むのでコメントアウト（修正するならJmetal仕様のメソッドを書き換える）
 		/*new SolutionListOutput(nonDominatedSolutions)
     	.setVarFileOutputContext(new DefaultFileOutputContext(Consts.EXPERIMENT_ID_DIR+sep+"VAR-final.csv", ","))
@@ -286,6 +294,8 @@ public class MoFGBML_Basic_Main {
 
 		//outputResults(nonDominatedSolutions, train,test);
 
+        List<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> elite = algorithm.getelitePopulation();
+
 		//Results of final generation
 	    ArrayList<String> strs = new ArrayList<>();
 	    String str = "pop,train,NR,RL,Cover,RW,test";
@@ -293,7 +303,8 @@ public class MoFGBML_Basic_Main {
 
 	    for(int i = 0; i < nonDominatedSolutions.size(); i++) {
             double errorRatetrain = nonDominatedSolutions.get(i).getObjective(0);
-            double NR = nonDominatedSolutions.get(i).getObjective(1);
+            NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFunc = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
+            double ruleNum = RuleNumFunc.function(nonDominatedSolutions.get(i));
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLength = 0;
             for (int j = 0; j < nonDominatedSolutions.get(i).getNumberOfVariables(); j++) {
@@ -352,7 +363,7 @@ public class MoFGBML_Basic_Main {
 
 	    	str = String.valueOf(i);
 	    	str += "," + errorRatetrain;
-	    	str += "," + NR;
+	    	str += "," + ruleNum;
 	    	str += "," + TotalRuleLength;
 	    	str += "," + TotalCover;
 	    	str += "," + AveRW;
@@ -369,7 +380,8 @@ public class MoFGBML_Basic_Main {
 
 	    for(int i = 0; i < nonDominatedSolutionsARC.size(); i++) {
             double errorRatetrainARC = nonDominatedSolutionsARC.get(i).getObjective(0);
-            double NRARC = nonDominatedSolutionsARC.get(i).getObjective(1);
+            NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFuncARC = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
+            double ruleNumARC = RuleNumFuncARC.function(nonDominatedSolutionsARC.get(i));
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFuncARC = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLengthARC = 0;
             for (int j = 0; j < nonDominatedSolutionsARC.get(i).getNumberOfVariables(); j++) {
@@ -427,7 +439,7 @@ public class MoFGBML_Basic_Main {
 
 	    	strARC = String.valueOf(i);
 	    	strARC += "," + errorRatetrainARC;
-	    	strARC += "," + NRARC;
+	    	strARC += "," + ruleNumARC;
 	    	strARC += "," + TotalRuleLengthARC;
 	    	strARC += "," + TotalCoverARC;
 	    	strARC += "," + AveRWARC;
@@ -436,6 +448,82 @@ public class MoFGBML_Basic_Main {
 	    }
 	    String fileNameARC = Consts.EXPERIMENT_ID_DIR + sep + "resultsARC.csv";
 	    Output.writeln(fileNameARC, strsARC, false);
+
+	    //Results of elite population
+	    ArrayList<String> strselite = new ArrayList<>();
+	    String strelite = "pop,train,NR,RL,Cover,RW,test";
+	    strselite.add(strelite);
+
+	    for(int i = 0; i < elite.size(); i++) {
+            double errorRatetrainelite = elite.get(i).getObjective(0);
+            NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFuncelite = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
+            double ruleNumelite = RuleNumFuncelite.function(elite.get(i));
+            RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFuncelite= new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
+            double TotalRuleLengthelite = 0;
+            for (int j = 0; j < elite.get(i).getNumberOfVariables(); j++) {
+                 double RuleLengthelite = RuleLengthFuncelite.function(elite.get(i).getVariable(j));
+                 TotalRuleLengthelite+= RuleLengthelite;
+            }
+
+            double TotalCoverelite = 0;
+            for (int j = 0; j < elite.get(i).getNumberOfVariables(); j++) {
+
+            	 double Coverelite = 0;
+            	 List<Double> supportelite = new ArrayList<Double>();
+
+            	 for (int k = 0; k < train.getNdim(); k++) {
+            		  if (elite.get(i).getVariable(j).getVariable(k) != 0) {
+
+            			  if ((elite.get(i).getVariable(j).getVariable(k) == 1) ||
+            				  (elite.get(i).getVariable(j).getVariable(k) == 2) ||
+            				  (elite.get(i).getVariable(j).getVariable(k) == 4)){
+            				   supportelite.add(1.0);
+            			  }else if ((elite.get(i).getVariable(j).getVariable(k) == 3) ||
+                				  (elite.get(i).getVariable(j).getVariable(k) == 5) ||
+                				  (elite.get(i).getVariable(j).getVariable(k) == 11) ||
+                				  (elite.get(i).getVariable(j).getVariable(k) == 12) ||
+                				  (elite.get(i).getVariable(j).getVariable(k) == 13)){
+                				   supportelite.add(1.0/2);
+            			  }else if ((elite.get(i).getVariable(j).getVariable(k) == 6) ||
+                				  (elite.get(i).getVariable(j).getVariable(k) == 9)){
+                				   supportelite.add(1.0/3);
+            			  }else if ((elite.get(i).getVariable(j).getVariable(k) == 7) ||
+                				  (elite.get(i).getVariable(j).getVariable(k) == 8)){
+           				   supportelite.add(2.0/3);
+       			          }else if ((elite.get(i).getVariable(j).getVariable(k) == 10) ||
+                				  (elite.get(i).getVariable(j).getVariable(k) == 14)){
+           				   supportelite.add(1.0/4);
+       			          }
+            		  }
+            	 }
+            	 if (!supportelite.isEmpty()) {
+            	     Coverelite = supportelite.stream().reduce(1.0, (a, b) -> a * b);
+                   	 TotalCoverelite += Coverelite;
+                 }
+            }
+
+            double TotalRWelite = 0;
+            for (int j = 0; j < elite.get(i).getNumberOfVariables(); j++) {
+                double RWelite = (Double) elite.get(i).getVariable(j).getRuleWeight().getRuleWeightValue();
+                TotalRWelite += RWelite;
+            }
+            double AveRWelite = TotalRWelite/(elite.get(i).getNumberOfVariables());
+
+            ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function1elite
+			= new ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
+		    double errorRatetestelite= function1elite.function(elite.get(i), test);
+
+	    	strelite = String.valueOf(i);
+	    	strelite += "," + errorRatetrainelite;
+	    	strelite += "," + ruleNumelite;
+	    	strelite += "," + TotalRuleLengthelite;
+	    	strelite += "," + TotalCoverelite;
+	    	strelite += "," + AveRWelite;
+	    	strelite += "," + errorRatetestelite;
+	    	strselite.add(strelite);
+	    }
+	    String fileNameelite = Consts.EXPERIMENT_ID_DIR + sep + "resultselite.csv";
+	    Output.writeln(fileNameelite, strselite, false);
 
 		return;
 	}

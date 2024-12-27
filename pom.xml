@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>cilabo.MoFGBML</groupId>
   <artifactId>MoFGBML</artifactId>
-  <version>23.0.0-SNAPSHOT-Basic</version>
+  <version>23.0.0-SNAPSHOT-ME</version>
 
   <build>
     <sourceDirectory>src</sourceDirectory>
@@ -25,7 +25,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>cilabo.main.impl.basic.MoFGBML_Basic_Main</mainClass>
+              <mainClass>cilabo.main.impl.MAPElites.FGBML_MAPElites_Main</mainClass>
               <classpathPrefix>dependency/</classpathPrefix>>
               <addClasspath>true</addClasspath>
               <addExtensions>true</addExtensions>

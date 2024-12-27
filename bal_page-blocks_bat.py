@@ -39,9 +39,9 @@ def run(Dataset):
 
     requests = [{"trial" : f"{i}_{j}",
                 "dataset" : Dataset, 
-                "jarFile" : "target\MoFGBML-23.0.0-SNAPSHOT-Basic.jar", 
-                "algroithmID" : f"Basic\{Dataset}Basic",
-                "parallelCores" : "50",
+                "jarFile" : "target\MoFGBML-23.0.0-SNAPSHOT-ME.jar", 
+                "algroithmID" : f"ME\{Dataset}",
+                "parallelCores" : "6",
                 "experimentID" : f"trial{i}{j}",
                 "trainFile" : f"dataset\\{Dataset}\\a{i}_{j}_{Dataset}-10tra.dat",
                 "testFile" : f"dataset\\{Dataset}\\a{i}_{j}_{Dataset}-10tst.dat"} \

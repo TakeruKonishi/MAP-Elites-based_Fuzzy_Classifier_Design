@@ -27,21 +27,23 @@ public final class SingleWinnerRuleSelection <michiganSolution extends MichiganS
 			throw new IllegalArgumentException("argument [michiganSolutionList] has no michiganSolution @SingleWinnerRuleSelection.classify()");}
 
 		boolean canClassify = false; //識別可能フラグ
-		double max = -Double.MAX_VALUE; //適用度最大値保存バッファ
+		double max = -Double.MAX_VALUE; //最大値保存バッファ
 		int winner = 0; //勝利ルールインデックス保存バッファ
 		for(int q = 0; q < michiganSolutionList.size(); q++) {
 			MichiganSolution<?> michiganSolution = michiganSolutionList.get(q);
 			if(michiganSolution.getClassLabel().isRejectedClassLabel()) {
 				throw new IllegalArgumentException("argument [michiganSolutionList] has michiganSolution with Rejected ClassLabel @SingleWinnerRuleSelection.classify()");}
-			double value = michiganSolution.getFitnessValue(pattern.getAttributeVector()); //適合度計算
+			double membership = michiganSolution.getFitnessValue(pattern.getAttributeVector()); //適合度計算
+			double CF = (Double) michiganSolution.getRuleWeight().getRuleWeightValue();
+			double value = membership * CF;
 
-			//適用度最大値更新ケース
+			//最大値更新ケース
 			if(value > max) {
 				max = value;
 				winner = q;
 				canClassify = true;
 			}
-			//適用度最大値が同値を取る場合
+			//最大値が同値を取る場合
 			else if(value == max) {
 				MichiganSolution<?> winnerRule = michiganSolutionList.get(winner);
 				// "membership*CF"が同値 かつ 結論部クラスが異なる場合識別不能とする
