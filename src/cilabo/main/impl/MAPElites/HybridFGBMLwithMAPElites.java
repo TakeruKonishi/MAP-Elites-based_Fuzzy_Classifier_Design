@@ -301,7 +301,7 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 	    		/*出力された数値が0埋めされないversion*/
     	        new PittsburghSolutionListOutput((List<PittsburghSolution<?>>) this.getPopulation())
                 .setFunFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("FUN-%d.csv", evaluations), ","))
-                .print();
+                .printFunonly();
 
 	    		/*Element population = XML_manager.getInstance().createElement(XML_TagName.population);
 

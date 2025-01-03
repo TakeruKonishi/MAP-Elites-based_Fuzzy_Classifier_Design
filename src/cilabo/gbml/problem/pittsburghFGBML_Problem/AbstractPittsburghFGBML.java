@@ -5,8 +5,11 @@ import org.uma.jmetal.problem.Problem;
 
 import cilabo.data.DataSet;
 import cilabo.fuzzy.classifier.Classifier;
+import cilabo.fuzzy.rule.impl.Rule_Basic;
+import cilabo.gbml.objectivefunction.michigan.RuleLength;
 import cilabo.gbml.solution.michiganSolution.MichiganSolution;
 import cilabo.gbml.solution.michiganSolution.MichiganSolution.MichiganSolutionBuilder;
+import cilabo.gbml.solution.michiganSolution.impl.MichiganSolution_Basic;
 import cilabo.gbml.solution.pittsburghSolution.PittsburghSolution;
 import cilabo.gbml.solution.util.attribute.NumberOfWinner;
 
@@ -49,14 +52,15 @@ public abstract class AbstractPittsburghFGBML <pittsburghSolutionObject extends 
 		double f2 = function2.function(solution);
 		solution.setObjective(OBJECTIVES_FOR_PITTSBURGH.NumberOfRule.toInt(), f2);*/
 
-		/*RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
+		RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
         double TotalRuleLength = 0;
         for (int i = 0; i < solution.getNumberOfVariables(); i++) {
              double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
              TotalRuleLength += RuleLength;
         }
-		double f3 = TotalRuleLength;
-		solution.setObjective(2, f3);*/
+		double f2 = TotalRuleLength;
+		//第何目的関数かに注意
+		solution.setObjective(1, f2);
 
 		if(solution.getNumberOfVariables() == 0) {
 			throw new ArithmeticException("PittsburghSolution has no winner michiganSolution");

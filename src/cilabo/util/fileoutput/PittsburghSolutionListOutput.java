@@ -55,6 +55,14 @@ public class PittsburghSolutionListOutput{
 	    printVariablesToFile(varFileContext, solutionList);
 	  }
 
+	  public void printFunonly() {
+		if (isObjectiveToBeMinimized == null) {
+		  printObjectivesToFile(funFileContext, solutionList);
+		} else {
+		  printObjectivesToFile(funFileContext, solutionList, isObjectiveToBeMinimized);
+		}
+      }
+
 	  public void printVariablesToFile(
 	      FileOutputContext context, List<PittsburghSolution<?>> solutionList) {
 	    BufferedWriter bufferedWriter = context.getFileWriter();
