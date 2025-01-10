@@ -33,9 +33,7 @@ public final class SingleWinnerRuleSelection <michiganSolution extends MichiganS
 			MichiganSolution<?> michiganSolution = michiganSolutionList.get(q);
 			if(michiganSolution.getClassLabel().isRejectedClassLabel()) {
 				throw new IllegalArgumentException("argument [michiganSolutionList] has michiganSolution with Rejected ClassLabel @SingleWinnerRuleSelection.classify()");}
-			double membership = michiganSolution.getFitnessValue(pattern.getAttributeVector()); //適合度計算
-			double CF = (Double) michiganSolution.getRuleWeight().getRuleWeightValue();
-			double value = membership * CF;
+			double value = michiganSolution.getFitnessValue(pattern.getAttributeVector()); //適合度計算
 
 			//最大値更新ケース
 			if(value > max) {

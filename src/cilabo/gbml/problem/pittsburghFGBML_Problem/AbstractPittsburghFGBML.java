@@ -5,13 +5,12 @@ import org.uma.jmetal.problem.Problem;
 
 import cilabo.data.DataSet;
 import cilabo.fuzzy.classifier.Classifier;
-import cilabo.fuzzy.rule.impl.Rule_Basic;
-import cilabo.gbml.objectivefunction.michigan.RuleLength;
+import cilabo.gbml.objectivefunction.pittsburgh.NumberOfRules;
 import cilabo.gbml.solution.michiganSolution.MichiganSolution;
 import cilabo.gbml.solution.michiganSolution.MichiganSolution.MichiganSolutionBuilder;
-import cilabo.gbml.solution.michiganSolution.impl.MichiganSolution_Basic;
 import cilabo.gbml.solution.pittsburghSolution.PittsburghSolution;
 import cilabo.gbml.solution.util.attribute.NumberOfWinner;
+import cilabo.main.ExperienceParameter.OBJECTIVES_FOR_PITTSBURGH;
 
 public abstract class AbstractPittsburghFGBML <pittsburghSolutionObject extends PittsburghSolution<michiganSolution>,
 		michiganSolution extends MichiganSolution<?>>
@@ -48,11 +47,11 @@ public abstract class AbstractPittsburghFGBML <pittsburghSolutionObject extends 
 				solution.removeVariable(i); i--;
 			}
 		}
-		/*NumberOfRules<PittsburghSolution<michiganSolution>> function2 = new NumberOfRules<PittsburghSolution<michiganSolution>>();
+		NumberOfRules<PittsburghSolution<michiganSolution>> function2 = new NumberOfRules<PittsburghSolution<michiganSolution>>();
 		double f2 = function2.function(solution);
-		solution.setObjective(OBJECTIVES_FOR_PITTSBURGH.NumberOfRule.toInt(), f2);*/
+		solution.setObjective(OBJECTIVES_FOR_PITTSBURGH.NumberOfRule.toInt(), f2);
 
-		RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
+		/*RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
         double TotalRuleLength = 0;
         for (int i = 0; i < solution.getNumberOfVariables(); i++) {
              double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
@@ -60,7 +59,7 @@ public abstract class AbstractPittsburghFGBML <pittsburghSolutionObject extends 
         }
 		double f2 = TotalRuleLength;
 		//第何目的関数かに注意
-		solution.setObjective(1, f2);
+		solution.setObjective(1, f2);*/
 
 		if(solution.getNumberOfVariables() == 0) {
 			throw new ArithmeticException("PittsburghSolution has no winner michiganSolution");

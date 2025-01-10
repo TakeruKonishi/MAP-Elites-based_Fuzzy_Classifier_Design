@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>cilabo.MoFGBML</groupId>
   <artifactId>MoFGBML</artifactId>
-  <version>23.0.0-SNAPSHOT-RLME</version>
+  <version>23.0.0-SNAPSHOT-BasicME</version>
 
   <build>
     <sourceDirectory>src</sourceDirectory>
