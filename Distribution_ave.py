@@ -15,11 +15,13 @@ addFontSize = 80
 
 sep = "\\"
 
-Dataset = 'vehicle'
+Dataset = 'bupa'
 
-folder = 'results' + sep + 'ME' + sep + Dataset + sep + Dataset + sep
+model = 'ME'
 
-numberofclasses = 4
+folder = 'results' + sep + model + sep + Dataset + sep + Dataset + sep 
+
+numberofclasses = 2
 
 # 全試行の結果を格納するリスト
 all_heatmaps = []
@@ -86,12 +88,10 @@ cbar.set_ticks(cbar_ticks)
 cbar.set_ticklabels(['{:.1f}'.format(tick) for tick in cbar_ticks])
 
 plt.xticks([numberofclasses, 10, 20, 30, 40, 50, 60], fontsize=addFontSize)
-#plt.yticks([numberofclasses - 1, 20, 40, 60, 80, 100, 120, 140, 160, 180], fontsize=addFontSize)
-#plt.yticks([numberofclasses - 1, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240], fontsize=addFontSize)
-plt.yticks([numberofclasses - 1, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380], fontsize=addFontSize)
+#plt.yticks([numberofclasses - 1, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380], fontsize=addFontSize)
 plt.grid(which='both', color='gray', linestyle='-', linewidth=0.5)
 plt.xlabel('Number of Rules', fontsize=100, labelpad=20)
 plt.ylabel('Total Rule Length', fontsize=100, labelpad=20)
 plt.tight_layout()
-plt.savefig("vehicleME_avetst.png", format="png", dpi=400, bbox_inches='tight', pad_inches=0)
+plt.savefig(Dataset + '_' + model + '_' + "tst.png", format="png", dpi=600, bbox_inches='tight', pad_inches=0)
 plt.show()

@@ -112,7 +112,7 @@ public class HybridFGBMLwithMAPElitesII <S extends PittsburghSolution<?>>
 		this.observable = new DefaultObservable<>("Hybrid FGBML with MAP-Elites algorithm");
 
 		this.isFineGrainedPhase = false;
-		this.coarseGridWidth = 5;
+		this.coarseGridWidth = 2;
 		this.fineGridWidth = 1;
 	    this.generationThreshold = Consts.TERMINATE_EVALUATION/2;
 
@@ -121,6 +121,8 @@ public class HybridFGBMLwithMAPElitesII <S extends PittsburghSolution<?>>
 	@Override
 	public void run() {
 		startTime = System.currentTimeMillis();
+
+		JMetalRandom.getInstance().setSeed(Consts.RAND_SEED);
 
 		/* === START === */
 		List<S> offspringPopulation;
@@ -164,7 +166,8 @@ public class HybridFGBMLwithMAPElitesII <S extends PittsburghSolution<?>>
                 // 細かいセルに切り替え
                 isFineGrainedPhase = true;
                 currentGridWidth = fineGridWidth;
-                updateEliteMap(population, eliteMap, currentGridWidth); // リマップ
+                eliteMap.clear(); // 古いエリートをクリア
+                updateEliteMap(population, eliteMap, currentGridWidth); // 新しい粒度でリマップ
             }
 
 			population = new ArrayList<>(eliteMap.values());
@@ -201,11 +204,11 @@ public class HybridFGBMLwithMAPElitesII <S extends PittsburghSolution<?>>
 
             if (gridWidth == fineGridWidth) {
                 // 細かいセルの場合は元の切り捨てに戻す
-                ruleNumIndex = (int) (ruleNum);
-                ruleLengthIndex = (int) (totalRuleLength);
+            	ruleNumIndex = (int)(ruleNum/gridWidth);
+                ruleLengthIndex = (int)(totalRuleLength/gridWidth);
             } else {
-                ruleNumIndex = Math.min((int) (ruleNum / gridWidth), (Consts.MAX_RULE_NUM / gridWidth) - 1);
-                ruleLengthIndex = (int) (totalRuleLength / gridWidth);
+                ruleNumIndex = Math.min((int)(ruleNum/gridWidth), (int)(Consts.MAX_RULE_NUM / gridWidth) - 1);
+                ruleLengthIndex = (int)(totalRuleLength/gridWidth);
             }
 
             Pair<Integer, Integer> key = Pair.of(ruleNumIndex, ruleLengthIndex);
@@ -233,12 +236,12 @@ public class HybridFGBMLwithMAPElitesII <S extends PittsburghSolution<?>>
         Pair<Integer, Integer> parent1Key = getGridKey(parent1, gridWidth);
         List<S> neighbors = getNeighborSolutions(parent1Key, population, gridWidth);
 
-        if (!neighbors.isEmpty() && isFineGrainedPhase && JMetalRandom.getInstance().nextDouble() < 0.7) {
-            // 近傍交叉 (70%)
+        if (!neighbors.isEmpty() && isFineGrainedPhase && JMetalRandom.getInstance().nextDouble() < 0.75) {
+            // 近傍交叉
             S parent2 = neighbors.get(randomGenerator.getRandomValue(0, neighbors.size() - 1));
             matingPool.add(parent2);
         } else {
-            // ランダム交叉 (30%)
+            // ランダム交叉
             int parentIndex2;
             do {
                 parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
@@ -275,11 +278,11 @@ public class HybridFGBMLwithMAPElitesII <S extends PittsburghSolution<?>>
 
         if (gridWidth == fineGridWidth) {
             // 細かいセルの場合は元の切り捨てに戻す
-            ruleNumIndex = (int) (ruleNum);
-            ruleLengthIndex = (int) (totalRuleLength);
+        	ruleNumIndex = (int)(ruleNum/gridWidth);
+            ruleLengthIndex = (int)(totalRuleLength/gridWidth);
         } else {
-            ruleNumIndex = Math.min((int) (ruleNum / gridWidth), (Consts.MAX_RULE_NUM / gridWidth) - 1);
-            ruleLengthIndex = (int) (totalRuleLength / gridWidth);
+        	ruleNumIndex = Math.min((int)(ruleNum/gridWidth), (int)(Consts.MAX_RULE_NUM / gridWidth) - 1);
+            ruleLengthIndex = (int)(totalRuleLength/gridWidth);
         }
 
         return Pair.of(ruleNumIndex, ruleLengthIndex);

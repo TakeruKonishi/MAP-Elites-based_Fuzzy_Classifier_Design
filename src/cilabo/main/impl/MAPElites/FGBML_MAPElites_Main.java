@@ -193,8 +193,8 @@ public class FGBML_MAPElites_Main {
 
 
 		/* Algorithm: Hybrid-style FGBML with MAP-Elites */
-		HybridFGBMLwithMAPElites<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
-			= new HybridFGBMLwithMAPElites<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(problem,
+		HybridFGBMLwithMAPElitesII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
+			= new HybridFGBMLwithMAPElitesII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(problem,
 											Consts.POPULATION_SIZE,
 											Consts.OFFSPRING_POPULATION_SIZE,
 											Consts.OUTPUT_FREQUENCY,

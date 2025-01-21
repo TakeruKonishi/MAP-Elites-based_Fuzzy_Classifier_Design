@@ -111,6 +111,8 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 	public void run() {
 		startTime = System.currentTimeMillis();
 
+		JMetalRandom.getInstance().setSeed(Consts.RAND_SEED);
+
 		/* === START === */
 		List<S> offspringPopulation;
 		List<S> matingPopulation;

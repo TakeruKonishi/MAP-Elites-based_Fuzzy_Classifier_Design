@@ -8,12 +8,13 @@ Created on Thu Jun 13 16:27:00 2024
 import pandas as pd
 import statistics
 
+Dataset = 'bupa'
+
+model = 'ME'
 
 sep = "\\"
 
-folder = 'results' + sep + 'ME' + sep + 'bupa' + sep 
-
-Dataset = 'bupa'
+folder = 'results' + sep + model + sep + Dataset + sep + Dataset + sep 
 
 """
 function SummaryOneTrial
@@ -30,14 +31,10 @@ return dictionary of:
 """
 def SummaryOneTrial(Dataset, trial):
     
-    #最終解選択手法：学習用データで最も良い解　→　RLmin →　Covermax →　RWmin
+    #最終解選択手法：学習用データで最も良い解　→　NRmin  →　RLmin →　Covermax →　RWmin
     df_results = pd.read_csv(folder + "trial" + trial + sep + 'results.csv')
     
     numberofsolutions = len(df_results.drop_duplicates(subset=['train', 'NR', 'RL', 'Cover', 'RW']).index)
-    
-    maxRuleNum = max(df_results.NR)
-    
-    maxRuleLength = max(df_results.RL)
 
     TraError = min(df_results.train)
     
@@ -60,19 +57,23 @@ def SummaryOneTrial(Dataset, trial):
         selected_row = selected_row[selected_row['RW'] == selected_row['RW'].min()]
         
     target_pop = selected_row['pop'].iloc[0]
+
+    RuleNum = df_results.loc[df_results['pop'] == target_pop, 'NR'].values[0]
+    
+    RuleLength = df_results.loc[df_results['pop'] == target_pop, 'RL'].values[0]
     
     TstError = df_results.loc[df_results['pop'] == target_pop, 'test'].values[0]
     
-    return {"numberofsolutions" : numberofsolutions, "ruleNum" : maxRuleNum, "rulelength" : maxRuleLength, "TraError" : TraError, "TstError" : TstError}  
+    return {"numberofsolutions" : numberofsolutions, "ruleNum" : RuleNum, "rulelength" : RuleLength, "TraError" : TraError, "TstError" : TstError}  
     
 # make trial number rr = {0,1,2}, cc = {0,1,...9}
 trial = [str(rr) + str(cc) for rr in range(3) for cc in range(10)]
 
 results = list(map(lambda x : SummaryOneTrial(Dataset, x), trial))
 
-numberofsolutions = statistics.mean([results[trial]["numberofsolutions"] for trial in range(len(results))])
+#numberofsolutions = statistics.mean([results[trial]["numberofsolutions"] for trial in range(len(results))])
 
-numberofsolutionsstd = statistics.stdev([results[trial]["numberofsolutions"] for trial in range(len(results))])
+#numberofsolutionsstd = statistics.stdev([results[trial]["numberofsolutions"] for trial in range(len(results))])
 
 ruleNum = statistics.mean([results[trial]["ruleNum"] for trial in range(len(results))])
 
@@ -93,21 +94,31 @@ TstErrorstd = statistics.stdev([results[trial]["TstError"] for trial in range(le
 
 # ----print result ----
 
-print("Average the number of solutions : " + str(numberofsolutions))
+print(Dataset + '&' + model)
 
-print("std the number of solutions : " + str(numberofsolutionsstd))
+#print("Average the number of solutions : " + str(numberofsolutions))
+
+#print("std the number of solutions : " + str(numberofsolutionsstd))
+
+print()
 
 print("Average the number of rule : " + str(ruleNum))
 
 print("std the number of rule : " + str(ruleNumstd))
 
+print()
+
 print("Average the length of rule : " + str(ruleLength))
 
 print("std the length of rule : " + str(ruleLengthstd))
 
+print()
+
 print("Average error rate for the training data : " + str(TraError))
 
 print("std error rate for the training data : " + str(TraErrorstd))
+
+print()
 
 print("Average error rate for the test data : " + str(TstError))
 
