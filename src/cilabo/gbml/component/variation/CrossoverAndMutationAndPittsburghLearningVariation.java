@@ -2,6 +2,7 @@ package cilabo.gbml.component.variation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.uma.jmetal.component.variation.Variation;
 import org.uma.jmetal.operator.crossover.CrossoverOperator;
@@ -40,15 +41,20 @@ public class CrossoverAndMutationAndPittsburghLearningVariation<S extends Pittsb
 
 	@Override
 	public List<S> variate(List<S> population, List<S> matingPopulation) {
+
 		int numberOfParents = crossover.getNumberOfRequiredParents();
 
-		checkNumberOfParents(matingPopulation, numberOfParents);
+		List<S> matingCopy = matingPopulation.stream()
+			    .map(sol -> (S) sol.copy())
+			    .collect(Collectors.toList());
+
+		checkNumberOfParents(matingCopy, numberOfParents);
 
 		List<S> offspringPopulation = new ArrayList<>(offspringPopulationSize);
 		for(int i = 0; i < matingPoolSize; i+= numberOfParents) {
 			List<S> parents = new ArrayList<>(numberOfParents);
 			for(int j = 0; j < numberOfParents; j++) {
-				parents.add(matingPopulation.get(i + j));
+				parents.add(matingCopy.get(i + j));
 			}
 
 			/* Crossover */

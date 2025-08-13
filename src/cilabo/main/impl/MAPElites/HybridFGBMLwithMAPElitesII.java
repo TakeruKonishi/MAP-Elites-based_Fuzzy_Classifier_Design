@@ -232,6 +232,13 @@ public class HybridFGBMLwithMAPElitesII <S extends PittsburghSolution<?>>
         S parent1 = population.get(parentIndex1);
         matingPool.add(parent1);
 
+        // 常にランダム交叉
+        /*int parentIndex2;
+        do {
+            parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
+        } while (parentIndex1 == parentIndex2);
+        matingPool.add(population.get(parentIndex2));*/
+
         // 近傍のセルから2つ目の親を選択
         Pair<Integer, Integer> parent1Key = getGridKey(parent1, gridWidth);
         List<S> neighbors = getNeighborSolutions(parent1Key, population, gridWidth);

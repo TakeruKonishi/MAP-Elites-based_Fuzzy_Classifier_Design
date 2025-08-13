@@ -165,10 +165,12 @@ public class MichiganCrossover <pittsburghSolution extends PittsburghSolution<mi
 			/* Offspring Generation */
 			List<michiganSolution> generatedSolutionByGA = new ArrayList<>();
 			int numberOfParents = crossover.getNumberOfRequiredParents();
+
+			outer:
 			for(int i = 0; i < matingPoolSize; i+= numberOfParents) {
 				List<michiganSolution> parents = new ArrayList<>();
 				for(int j = 0; j < numberOfParents; j++) {
-					parents.add(matingPopulation.get(i + j));
+					parents.add((michiganSolution) matingPopulation.get(i + j).copy());
 				}
 				List<michiganSolution> offspring = null;
 				/* Crossover: Uniform crossover */
@@ -185,7 +187,7 @@ public class MichiganCrossover <pittsburghSolution extends PittsburghSolution<mi
 				for(michiganSolution michiganSolution_tmp : offspring) {
 					generatedSolutionByGA.add(michiganSolution_tmp);
 					if(generatedSolutionByGA.size() == NumberOfGA) {
-						break;
+						break outer;
 					}
 				}
 			}

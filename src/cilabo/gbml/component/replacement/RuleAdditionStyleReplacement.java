@@ -4,9 +4,12 @@ import java.util.Collections;
 import java.util.List;
 
 import org.uma.jmetal.component.replacement.Replacement;
+import org.uma.jmetal.solution.util.attribute.util.attributecomparator.AttributeComparator;
+import org.uma.jmetal.solution.util.attribute.util.attributecomparator.impl.IntegerValueAttributeComparator;
 import org.uma.jmetal.util.comparator.ObjectiveComparator;
 
 import cilabo.gbml.solution.michiganSolution.MichiganSolution;
+import cilabo.gbml.solution.util.attribute.NumberOfClassifierPatterns;
 import cilabo.main.Consts;
 
 /**
@@ -20,7 +23,8 @@ public class RuleAdditionStyleReplacement <michiganSolution extends MichiganSolu
 
 		// 親個体をfitness順にソートする
 		Collections.sort(currentList,
-						 new ObjectiveComparator<MichiganSolution<?>>(0, ObjectiveComparator.Ordering.DESCENDING));
+				new IntegerValueAttributeComparator<michiganSolution>(new NumberOfClassifierPatterns<michiganSolution>().getAttributeId(),
+						AttributeComparator.Ordering.DESCENDING));
 
 		// 最大ルール数を超えるかどうかを判定
 		int NumberOfReplacement = 0;
