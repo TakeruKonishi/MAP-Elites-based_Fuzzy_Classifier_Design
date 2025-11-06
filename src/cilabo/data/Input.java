@@ -127,7 +127,7 @@ public class Input {
 		/* Load Dataset ======================== */
 		if(Objects.isNull(DataSetManager.getInstance().getTrains())) {
 			throw new IllegalArgumentException("argument [trainFile] is null @" + "TrainTestDatasetManager.loadTrainTestFiles()");}
-		if(Objects.isNull(DataSetManager.getInstance().getTrains())) {
+		if(Objects.isNull(DataSetManager.getInstance().getTests())) {
 			throw new IllegalArgumentException("argument [testFile] is null @" + "TrainTestDatasetManager.loadTrainTestFiles()");}
 
 		DataSet<Pattern_Basic> train = Input.inputDataSet_Basic(trainFile);
@@ -156,7 +156,7 @@ public class Input {
 		/* Load Dataset ======================== */
 		if(Objects.isNull(DataSetManager.getInstance().getTrains())) {
 			throw new IllegalArgumentException("argument [trainFile] is null @TrainTestDatasetManager.loadTrainTestFiles()");}
-		if(Objects.isNull(DataSetManager.getInstance().getTrains())) {
+		if(Objects.isNull(DataSetManager.getInstance().getTests())) {
 			throw new IllegalArgumentException("argument [testFile] is null @TrainTestDatasetManager.loadTrainTestFiles()");}
 
 		DataSet<Pattern_MultiClass> train = Input.inputDataSet_MultiLabel(trainFile);

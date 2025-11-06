@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -118,7 +119,7 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 		List<S> matingPopulation;
 
         //各セルのエリート個体を保持するためのマップ
-        Map<Pair<Integer,Integer>, S> eliteMap = new HashMap<>();
+        Map<Pair<Integer,Integer>, S> eliteMap = new LinkedHashMap<>();
 
         //グリッド幅の設定
         int ruleNumGridWidth = 1;  //ルール数のグリッド幅
@@ -131,34 +132,8 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 		/* 未勝利個体削除*/
 		population = removeNoWinnerMichiganSolution(population);
 
-		//初期個体群を特徴空間にマッピングし，エリートを選択
-        for (S solution : population) {
-            //ルール数と総ルール長を取得
-        	NumberOfRules<S> RuleNumFunc = new NumberOfRules<S>();
-            double ruleNum = RuleNumFunc.function(solution);
-            RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
-            double TotalRuleLength = 0;
-            for (int i = 0; i < solution.getNumberOfVariables(); i++) {
-                 double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
-                 TotalRuleLength += RuleLength;
-            }
-
-            //グリッド座標を計算
-            int ruleNumIndex = (int)(ruleNum/ruleNumGridWidth);
-            int ruleLengthIndex = (int)(TotalRuleLength/ruleLengthGridWidth);
-
-            //グリッド座標をキーとする
-            Pair<Integer,Integer> key = Pair.of(ruleNumIndex,ruleLengthIndex);
-
-            //エリート選択: 同じセルに既に個体が存在する場合は，より優れた個体で更新（存在しない場合は，新しく個体を配置）
-            eliteMap.compute(key, (k, existingSolution) -> {
-                if (existingSolution == null || solution.getObjective(0) < existingSolution.getObjective(0)) {
-                    return (S) solution;
-                } else {
-                    return existingSolution;
-                }
-            });
-        }
+		// 初期個体群をマッピングしてエリート選択
+        updateEliteMap(population, eliteMap, ruleNumGridWidth, ruleLengthGridWidth);
 
         // エリート個体のみを含むリストを更新
         population = new ArrayList<>(eliteMap.values());
@@ -178,22 +153,11 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 
 		/* GA loop */
 		while(!isStoppingConditionReached()) {
+
 			// エリート個体のみを含むリストを更新
 	        population = new ArrayList<>(eliteMap.values());
-	        // 現在の個体群のサイズを更新
-            int nowpopulationSize = population.size();
-            //ランダムに2つの親を選択
-        	BoundedRandomGenerator<Integer> selectRandomGenerator = (a, b) -> JMetalRandom.getInstance().nextInt(a, b);
-        	int parentIndex1 = selectRandomGenerator.getRandomValue(0, nowpopulationSize-1);
-        	int parentIndex2 = selectRandomGenerator.getRandomValue(0, nowpopulationSize-1);
-            while(parentIndex1 == parentIndex2) {  //2つの異なる親を確保
-            	parentIndex2 = selectRandomGenerator.getRandomValue(0, nowpopulationSize-1);
-            }
-
-            S parent1 = population.get(parentIndex1);
-            S parent2 = population.get(parentIndex2);
-
-            matingPopulation = new ArrayList<S>(Arrays.asList(parent1,parent2));
+	        // 親個体選択
+	        matingPopulation = selectMatingPopulation(population, ruleNumGridWidth, ruleLengthGridWidth);
 			/* 子個体群生成 - Offspring Generation */
             offspringPopulation = reproduction(matingPopulation);
 			/* 子個体群評価 - Offspring Evaluation */
@@ -201,34 +165,7 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 			/* 未勝利個体削除*/
             offspringPopulation = removeNoWinnerMichiganSolution(offspringPopulation);
 
-            //子個体群を特徴空間にマッピングし，エリートを選択
-            for (S solution : offspringPopulation) {
-                //ルール数と総ルール長を取得
-            	NumberOfRules<S> RuleNumFunc = new NumberOfRules<S>();
-                double ruleNum = RuleNumFunc.function(solution);
-                RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
-                double TotalRuleLength = 0;
-                for (int i = 0; i < solution.getNumberOfVariables(); i++) {
-                     double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
-                     TotalRuleLength += RuleLength;
-                }
-
-                //グリッド座標を計算
-                int ruleNumIndex = (int)(ruleNum/ruleNumGridWidth);
-                int ruleLengthIndex = (int)(TotalRuleLength/ruleLengthGridWidth);
-
-                //グリッド座標をキーとする
-                Pair<Integer,Integer> key = Pair.of(ruleNumIndex,ruleLengthIndex);
-
-                //エリート選択: 同じセルに既に個体が存在する場合は，より優れた個体で更新（存在しない場合は，新しく個体を配置）
-                eliteMap.compute(key, (k, existingSolution) -> {
-                    if (existingSolution == null || solution.getObjective(0) < existingSolution.getObjective(0)) {
-                        return (S) solution;
-                    } else {
-                        return existingSolution;
-                    }
-                });
-            }
+            updateEliteMap(offspringPopulation, eliteMap, ruleNumGridWidth, ruleLengthGridWidth);
 
             // エリート個体のみを含むリストを更新
             population = new ArrayList<>(eliteMap.values());
@@ -240,6 +177,95 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 		/* ===  END  === */
 		totalComputingTime = System.currentTimeMillis() - startTime;
 	}
+
+	// エリートマップを更新するメソッド
+    private void updateEliteMap(List<S> solutions, Map<Pair<Integer, Integer>, S> eliteMap, int ruleNumGridWidth, int ruleLengthGridWidth) {
+        for (S solution : solutions) {
+            double ruleNum = new NumberOfRules<S>().function(solution);
+            double totalRuleLength = 0;
+            for (int i = 0; i < solution.getNumberOfVariables(); i++) {
+                totalRuleLength += new RuleLength<MichiganSolution_Basic<Rule_Basic>>().function(
+                    (MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
+            }
+
+            int ruleNumIndex = (int)(ruleNum/ruleNumGridWidth);
+            int ruleLengthIndex = (int)(totalRuleLength/ruleLengthGridWidth);
+
+            Pair<Integer, Integer> key = Pair.of(ruleNumIndex, ruleLengthIndex);
+
+            eliteMap.compute(key, (k, existingSolution) -> {
+                if (existingSolution == null || solution.getObjective(0) < existingSolution.getObjective(0)) {
+                    return (S) solution.copy();
+                } else {
+                    return existingSolution;
+                }
+            });
+        }
+    }
+
+    private List<S> selectMatingPopulation(List<S> population, int ruleNumGridWidth, int ruleLengthGridWidth) {
+        List<S> matingPool = new ArrayList<>();
+        BoundedRandomGenerator<Integer> randomGenerator = (a, b) -> JMetalRandom.getInstance().nextInt(a, b);
+
+        int parentIndex1 = randomGenerator.getRandomValue(0, population.size() - 1);
+        S parent1 = population.get(parentIndex1);
+        matingPool.add(parent1);
+
+        // 常にランダム交叉
+        int parentIndex2;
+        do {
+            parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
+        } while (parentIndex1 == parentIndex2);
+        matingPool.add(population.get(parentIndex2));
+
+        // 近傍のセルから2つ目の親を選択
+        /*Pair<Integer, Integer> parent1Key = getGridKey(parent1, ruleNumGridWidth, ruleLengthGridWidth);
+        List<S> neighbors = getNeighborSolutions(parent1Key, population, ruleNumGridWidth, ruleLengthGridWidth);
+
+        if (!neighbors.isEmpty() && JMetalRandom.getInstance().nextDouble() < 0.5) {
+            // 近傍交叉
+            S parent2 = neighbors.get(randomGenerator.getRandomValue(0, neighbors.size() - 1));
+            matingPool.add(parent2);
+        } else {
+            // ランダム交叉
+            int parentIndex2;
+            do {
+                parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
+            } while (parentIndex1 == parentIndex2);
+            matingPool.add(population.get(parentIndex2));
+        }*/
+
+        return matingPool;
+    }
+
+    // 近傍の解を取得
+    private List<S> getNeighborSolutions(Pair<Integer, Integer> key, List<S> population, int ruleNumGridWidth, int ruleLengthGridWidth) {
+        List<S> neighbors = new ArrayList<>();
+        for (S solution : population) {
+            Pair<Integer, Integer> solutionKey = getGridKey(solution, ruleNumGridWidth, ruleLengthGridWidth);
+            if (Math.abs(solutionKey.getLeft() - key.getLeft()) <= 5 &&
+                Math.abs(solutionKey.getRight() - key.getRight()) <= 5) {
+            	neighbors.add(solution);
+            }
+        }
+        return neighbors;
+    }
+
+    // 解のグリッドキーを取得
+    private Pair<Integer, Integer> getGridKey(S solution, int ruleNumGridWidth, int ruleLengthGridWidth) {
+        double ruleNum = new NumberOfRules<S>().function(solution);
+        double totalRuleLength = 0;
+        for (int i = 0; i < solution.getNumberOfVariables(); i++) {
+            totalRuleLength += new RuleLength<MichiganSolution_Basic<Rule_Basic>>().function(
+                (MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
+        }
+
+        int ruleNumIndex = (int)(ruleNum/ruleNumGridWidth);
+        int ruleLengthIndex = (int)(totalRuleLength/ruleLengthGridWidth);
+
+        return Pair.of(ruleNumIndex, ruleLengthIndex);
+    }
+
 
 	@Override
 	protected void initProgress() {

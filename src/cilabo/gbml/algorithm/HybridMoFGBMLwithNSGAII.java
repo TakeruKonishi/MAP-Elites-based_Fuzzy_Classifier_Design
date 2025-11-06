@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -151,7 +152,7 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 		List<S> matingPopulation;
 
 		//各セルのエリート個体を保持するためのマップ
-        Map<Pair<Integer,Integer>, S> eliteMap = new HashMap<>();
+        Map<Pair<Integer,Integer>, S> eliteMap = new LinkedHashMap<>();
 
         //グリッド幅の設定
         int ruleNumGridWidth = 1;  //ルール数のグリッド幅
@@ -166,14 +167,13 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
 		//初期個体群を特徴空間にマッピングし，エリートを選択
         for (S solution : population) {
-        	PittsburghSolution<?> copiedSolution = solution.copy();
             //ルール数と総ルール長を取得
         	NumberOfRules<S> RuleNumFunc = new NumberOfRules<S>();
-            double ruleNum = RuleNumFunc.function((S) copiedSolution);
+            double ruleNum = RuleNumFunc.function(solution);
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLength = 0;
-            for (int i = 0; i < copiedSolution.getNumberOfVariables(); i++) {
-                 double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) copiedSolution.getVariable(i));
+            for (int i = 0; i < solution.getNumberOfVariables(); i++) {
+                 double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
                  TotalRuleLength += RuleLength;
             }
 
@@ -186,8 +186,8 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
             //エリート選択: 同じセルに既に個体が存在する場合は，より優れた個体で更新（存在しない場合は，新しく個体を配置）
             eliteMap.compute(key, (k, existingSolution) -> {
-                if (existingSolution == null || copiedSolution.getObjective(0) < existingSolution.getObjective(0)) {
-                    return (S) copiedSolution;
+                if (existingSolution == null || solution.getObjective(0) < existingSolution.getObjective(0)) {
+                    return (S) solution.copy();
                 } else {
                     return existingSolution;
                 }
@@ -220,15 +220,14 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 			offspringPopulation = removeNoWinnerMichiganSolution(offspringPopulation);
 
 			//子個体群を特徴空間にマッピングし，エリートを選択
-			for (S solution : population) {
-	        	PittsburghSolution<?> copiedSolution = solution.copy();
+			for (S solution : offspringPopulation) {
 	            //ルール数と総ルール長を取得
 	        	NumberOfRules<S> RuleNumFunc = new NumberOfRules<S>();
-	            double ruleNum = RuleNumFunc.function((S) copiedSolution);
+	            double ruleNum = RuleNumFunc.function(solution);
 	            RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
 	            double TotalRuleLength = 0;
-	            for (int i = 0; i < copiedSolution.getNumberOfVariables(); i++) {
-	                 double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) copiedSolution.getVariable(i));
+	            for (int i = 0; i < solution.getNumberOfVariables(); i++) {
+	                 double RuleLength = RuleLengthFunc.function((MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
 	                 TotalRuleLength += RuleLength;
 	            }
 
@@ -241,8 +240,8 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
 	            //エリート選択: 同じセルに既に個体が存在する場合は，より優れた個体で更新（存在しない場合は，新しく個体を配置）
 	            eliteMap.compute(key, (k, existingSolution) -> {
-	                if (existingSolution == null || copiedSolution.getObjective(0) < existingSolution.getObjective(0)) {
-	                    return (S) copiedSolution;
+	                if (existingSolution == null || solution.getObjective(0) < existingSolution.getObjective(0)) {
+	                    return (S) solution.copy();
 	                } else {
 	                    return existingSolution;
 	                }
@@ -263,6 +262,7 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 			//ArchivePopulation = SolutionListUtils.getNonDominatedSolutions(ArchivePopulation);
 
 			/* JMetal progress update */
+
 			updateProgress();
 		}
 

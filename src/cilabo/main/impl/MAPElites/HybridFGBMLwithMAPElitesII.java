@@ -3,6 +3,7 @@ package cilabo.main.impl.MAPElites;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -129,7 +130,7 @@ public class HybridFGBMLwithMAPElitesII <S extends PittsburghSolution<?>>
 		List<S> matingPopulation;
 
         //各セルのエリート個体を保持するためのマップ
-        Map<Pair<Integer,Integer>, S> eliteMap = new HashMap<>();
+        Map<Pair<Integer,Integer>, S> eliteMap = new LinkedHashMap<>();
 
         int currentGridWidth = coarseGridWidth; // 初期は粗いセル
 
@@ -215,7 +216,7 @@ public class HybridFGBMLwithMAPElitesII <S extends PittsburghSolution<?>>
 
             eliteMap.compute(key, (k, existingSolution) -> {
                 if (existingSolution == null || solution.getObjective(0) < existingSolution.getObjective(0)) {
-                    return (S) solution;
+                    return (S) solution.copy();
                 } else {
                     return existingSolution;
                 }
