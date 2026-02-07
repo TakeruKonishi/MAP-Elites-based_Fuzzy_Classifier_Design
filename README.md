@@ -27,8 +27,6 @@ jMetal等のライブラリを使用しているため，ソースコードだ�
 
 When AI is used for high-risk decisions such as finance and medical diagnosis, transparency is required to ensure its reliability. In particular, inherently interpretable models are useful where accountability is demanded, as their internal mechanisms are understandable to humans. Fuzzy systems are representative inherently interpretable models that can make flexible decisions considering real-world uncertainties. MAP-Elites-based Fuzzy Classifier design (MEFC) generates a set of fuzzy classifiers that are both diverse regarding selected behavior descriptors and highly accurate by using MAP-Elites. Using this repository, you can perform MEFC that searches for accurate fuzzy classifiers within a two-dimensional behavior descriptor space defined by explainability and interpretability measures.
 
-# https://github.com/TakeruKonishi/MoFGBML_Fairness
-
 **About dependencies**
 
 Since we are using libraries such as jMetal, dependency errors may occur in the source code alone. We use a build tool called Maven, which saves us the trouble of resolving dependency errors.
