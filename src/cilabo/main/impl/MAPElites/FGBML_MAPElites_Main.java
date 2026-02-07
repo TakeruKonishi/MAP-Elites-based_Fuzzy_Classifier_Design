@@ -34,6 +34,7 @@ import cilabo.fuzzy.rule.antecedent.factory.impl.HeuristicRuleGenerationMethod;
 import cilabo.fuzzy.rule.consequent.factory.impl.MoFGBML_Learning;
 import cilabo.fuzzy.rule.impl.Rule_Basic;
 import cilabo.gbml.objectivefunction.michigan.RuleLength;
+import cilabo.gbml.objectivefunction.pittsburgh.AverageSingleWinnerRuleLength;
 import cilabo.gbml.objectivefunction.pittsburgh.ErrorRate;
 import cilabo.gbml.objectivefunction.pittsburgh.NumberOfRules;
 import cilabo.gbml.operator.crossover.HybridGBMLcrossover;
@@ -131,7 +132,7 @@ public class FGBML_MAPElites_Main {
 	 *
 	 */
 	public static void HybridStyleFGBML (DataSet<Pattern_Basic> train, DataSet<Pattern_Basic> test) {
-		Random.getInstance().initRandom(2022);
+		Random.getInstance().initRandom(Consts.RAND_SEED);
 		String sep = File.separator;
 
 		Parameters parameters = new Parameters(train);
@@ -193,8 +194,8 @@ public class FGBML_MAPElites_Main {
 
 
 		/* Algorithm: Hybrid-style FGBML with MAP-Elites */
-		HybridFGBMLwithMAPElitesII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
-			= new HybridFGBMLwithMAPElitesII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(problem,
+		HybridFGBMLwithMAPElitesV<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
+			= new HybridFGBMLwithMAPElitesV<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(train,problem,
 											Consts.POPULATION_SIZE,
 											Consts.OFFSPRING_POPULATION_SIZE,
 											Consts.OUTPUT_FREQUENCY,
@@ -216,13 +217,16 @@ public class FGBML_MAPElites_Main {
 
 		//Results of final generation
 	    ArrayList<String> strs = new ArrayList<>();
-	    String str = "pop,train,NR,RL,Cover,RW,test";
+	    String str = "pop,train,NR,ASWRL_tra,ASWRL_tst,RL,Cover,RW,test";
 	    strs.add(str);
 
 	    for(int i = 0; i < FinalSolutions.size(); i++) {
             double errorRatetrain = FinalSolutions.get(i).getObjective(0);
         	NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFunc = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
             double ruleNum = RuleNumFunc.function(FinalSolutions.get(i));
+            AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfunc = new AverageSingleWinnerRuleLength<>();
+            double ASWRL_tra = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) FinalSolutions.get(i), train);
+            double ASWRL_tst = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) FinalSolutions.get(i), test);
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLength = 0;
             for (int j = 0; j < FinalSolutions.get(i).getNumberOfVariables(); j++) {
@@ -282,6 +286,8 @@ public class FGBML_MAPElites_Main {
 	    	str = String.valueOf(i);
 	    	str += "," + errorRatetrain;
 	    	str += "," + ruleNum;
+	    	str += "," + ASWRL_tra;
+	    	str += "," + ASWRL_tst;
 	    	str += "," + TotalRuleLength;
 	    	str += "," + TotalCover;
 	    	str += "," + AveRW;

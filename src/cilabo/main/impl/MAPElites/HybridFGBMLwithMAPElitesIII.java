@@ -1,30 +1,21 @@
-package cilabo.gbml.algorithm;
+package cilabo.main.impl.MAPElites;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.uma.jmetal.algorithm.impl.AbstractEvolutionaryAlgorithm;
-import org.uma.jmetal.component.densityestimator.DensityEstimator;
-import org.uma.jmetal.component.densityestimator.impl.CrowdingDistanceDensityEstimator;
 import org.uma.jmetal.component.evaluation.Evaluation;
 import org.uma.jmetal.component.evaluation.impl.SequentialEvaluation;
 import org.uma.jmetal.component.initialsolutioncreation.InitialSolutionsCreation;
 import org.uma.jmetal.component.initialsolutioncreation.impl.RandomSolutionsCreation;
-import org.uma.jmetal.component.ranking.Ranking;
-import org.uma.jmetal.component.ranking.impl.FastNonDominatedSortRanking;
 import org.uma.jmetal.component.replacement.Replacement;
-import org.uma.jmetal.component.replacement.impl.RankingAndDensityEstimatorReplacement;
 import org.uma.jmetal.component.selection.MatingPoolSelection;
-import org.uma.jmetal.component.selection.impl.NaryTournamentMatingPoolSelection;
 import org.uma.jmetal.component.termination.Termination;
 import org.uma.jmetal.component.variation.Variation;
 import org.uma.jmetal.operator.crossover.CrossoverOperator;
@@ -33,29 +24,26 @@ import org.uma.jmetal.operator.selection.SelectionOperator;
 import org.uma.jmetal.problem.Problem;
 import org.uma.jmetal.util.JMetalLogger;
 import org.uma.jmetal.util.SolutionListUtils;
-import org.uma.jmetal.util.comparator.MultiComparator;
 import org.uma.jmetal.util.fileoutput.impl.DefaultFileOutputContext;
 import org.uma.jmetal.util.observable.Observable;
 import org.uma.jmetal.util.observable.ObservableEntity;
 import org.uma.jmetal.util.observable.impl.DefaultObservable;
-import org.w3c.dom.Element;
+import org.uma.jmetal.util.pseudorandom.BoundedRandomGenerator;
+import org.uma.jmetal.util.pseudorandom.JMetalRandom;
 
 import cilabo.data.DataSet;
-import cilabo.fuzzy.knowledge.Knowledge;
 import cilabo.fuzzy.rule.impl.Rule_Basic;
 import cilabo.gbml.component.variation.CrossoverAndMutationAndPittsburghLearningVariation;
-import cilabo.gbml.objectivefunction.michigan.RuleLength;
 import cilabo.gbml.objectivefunction.pittsburgh.AverageSingleWinnerRuleLength;
 import cilabo.gbml.objectivefunction.pittsburgh.NumberOfRules;
 import cilabo.gbml.problem.pittsburghFGBML_Problem.AbstractPittsburghFGBML;
 import cilabo.gbml.solution.michiganSolution.impl.MichiganSolution_Basic;
 import cilabo.gbml.solution.pittsburghSolution.PittsburghSolution;
 import cilabo.gbml.solution.pittsburghSolution.impl.PittsburghSolution_Basic;
+import cilabo.main.Consts;
 import cilabo.util.fileoutput.PittsburghSolutionListOutput;
-import xml.XML_TagName;
-import xml.XML_manager;
 
-public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
+public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
 	extends AbstractEvolutionaryAlgorithm<S, List<S>>
 	implements ObservableEntity {
 
@@ -85,17 +73,13 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
 	private Observable<Map<String, Object>> observable;
 
-	/*Set for the Archive*/
-	private Set<S> ArchivePopulation;
-
-	/*List for the elite*/
-	private List<S> elitePopulation;
-
 	private final NumberOfRules<S> ruleNumfunc = new NumberOfRules<>();
 	private final AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfunc = new AverageSingleWinnerRuleLength<>();
 
+
+
 	/** Constructor */
-	public HybridMoFGBMLwithNSGAII(
+	public HybridFGBMLwithMAPElitesIII(
 			/* Arguments */
 			DataSet<?> train,
 			Problem<S> problem,
@@ -119,49 +103,32 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 		this.mutationOperator = mutationOperator;
 		this.termination = termination;
 
-		/* NSGA-II */
-		DensityEstimator<S> densityEstimator = new CrowdingDistanceDensityEstimator<>();
-		Ranking<S> ranking = new FastNonDominatedSortRanking<>();
-
-		this.replacement =
-				new RankingAndDensityEstimatorReplacement<>(
-						ranking, densityEstimator, Replacement.RemovalPolicy.oneShot);
+		/* MAP-Elites */
 
 		this.variation =
 				new CrossoverAndMutationAndPittsburghLearningVariation<S>(
 						offspringPopulationSize, crossoverOperator, mutationOperator);
-
-		this.selection =
-				new NaryTournamentMatingPoolSelection<>(
-						2,
-						variation.getMatingPoolSize(),
-						new MultiComparator<>(
-								Arrays.asList(
-										ranking.getSolutionComparator(), densityEstimator.getSolutionComparator())));
 
 		this.initialSolutionsCreation = new RandomSolutionsCreation<S>(problem, populationSize);
 
 		this.evaluation = new SequentialEvaluation<>();
 
 		this.algorithmStatusData = new HashMap<>();
-		this.observable = new DefaultObservable<>("Hybrid MoFGBML with NSGA-II algorithm");
+		this.observable = new DefaultObservable<>("Hybrid FGBML with MAP-Elites algorithm");
 
-		/*Set for the Archive*/
-		this.ArchivePopulation = new HashSet<>();
-
-		/*List for the elite*/
-		this.elitePopulation = new ArrayList<>();
 	}
 
 	@Override
 	public void run() {
 		startTime = System.currentTimeMillis();
 
+		JMetalRandom.getInstance().setSeed(Consts.RAND_SEED);
+
 		/* === START === */
 		List<S> offspringPopulation;
 		List<S> matingPopulation;
 
-		//各セルのエリート個体を保持するためのマップ
+        //各セルのエリート個体を保持するためのマップ
         Map<Pair<Integer,Integer>, S> eliteMap = new LinkedHashMap<>();
 
         //グリッド幅の設定
@@ -175,19 +142,63 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 		/* 未勝利個体削除*/
 		population = removeNoWinnerMichiganSolution(population);
 
-		//初期個体群を特徴空間にマッピングし，エリートを選択
-        for (S solution : population) {
+		// 初期個体群をマッピングしてエリート選択
+        updateEliteMap(population, eliteMap, globalGridWidth, localGridWidth);
 
-        	double ruleNum = ruleNumfunc.function(solution);
+        // エリート個体のみを含むリストを更新
+        population = new ArrayList<>(eliteMap.values());
+
+		/* JMetal progress initialization */
+		initProgress();
+
+		/*Element population_ = XML_manager.getInstance().createElement(XML_TagName.population);
+		for(S solution: this.getResult()) {
+			XML_manager.getInstance().addElement(population_, solution.toElement());
+		}
+		Element generations_ = XML_manager.getInstance().createElement(XML_TagName.generations, XML_TagName.evaluation, String.valueOf(0));
+		//knowledge出力用
+		XML_manager.getInstance().addElement(generations_, Knowledge.getInstance().toElement());
+		XML_manager.getInstance().addElement(generations_, population_);
+    	XML_manager.getInstance().addElement(XML_manager.getInstance().getRoot(), generations_);*/
+
+		/* GA loop */
+		while(!isStoppingConditionReached()) {
+
+			// エリート個体のみを含むリストを更新
+	        population = new ArrayList<>(eliteMap.values());
+	        // 親個体選択
+	        matingPopulation = selectMatingPopulation(population, globalGridWidth, localGridWidth);
+			/* 子個体群生成 - Offspring Generation */
+            offspringPopulation = reproduction(matingPopulation);
+			/* 子個体群評価 - Offspring Evaluation */
+            offspringPopulation = evaluatePopulation(offspringPopulation);
+			/* 未勝利個体削除*/
+            offspringPopulation = removeNoWinnerMichiganSolution(offspringPopulation);
+
+            updateEliteMap(offspringPopulation, eliteMap, globalGridWidth, localGridWidth);
+
+            // エリート個体のみを含むリストを更新
+            population = new ArrayList<>(eliteMap.values());
+
+			/* JMetal progress update */
+			updateProgress();
+		}
+
+		/* ===  END  === */
+		totalComputingTime = System.currentTimeMillis() - startTime;
+	}
+
+	// エリートマップを更新するメソッド
+    private void updateEliteMap(List<S> solutions, Map<Pair<Integer, Integer>, S> eliteMap, double globalGridWidth, double localGridWidth) {
+        for (S solution : solutions) {
+            double ruleNum = ruleNumfunc.function(solution);
             double ASWRL = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) solution, train);
 
             int globalIndex = (int)(ruleNum/globalGridWidth);
             int localIndex = (int)(ASWRL/localGridWidth);
 
-            //グリッド座標をキーとする
             Pair<Integer, Integer> key = Pair.of(globalIndex, localIndex);
 
-            //エリート選択: 同じセルに既に個体が存在する場合は，より優れた個体で更新（存在しない場合は，新しく個体を配置）
             eliteMap.compute(key, (k, existingSolution) -> {
                 if (existingSolution == null || solution.getObjective(0) < existingSolution.getObjective(0)) {
                     return (S) solution.copy();
@@ -196,78 +207,67 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
                 }
             });
         }
+    }
 
-		/*生成した個体群をアーカイブに追加*/
-		for (S solution : population) {
-		    PittsburghSolution<?> copiedSolution = solution.copy();
-		    ArchivePopulation.add((S) copiedSolution);
-		}
+    private List<S> selectMatingPopulation(List<S> population, double globalGridWidth, double localGridWidth) {
+        List<S> matingPool = new ArrayList<>();
+        BoundedRandomGenerator<Integer> randomGenerator = (a, b) -> JMetalRandom.getInstance().nextInt(a, b);
 
-		/*アーカイブから非劣解を抽出（ただし，計算量大きくなるのでコメントアウト）*/
-		/*使用する際は，SetからListへの変換が必要*/
-		//ArchivePopulation = SolutionListUtils.getNonDominatedSolutions(ArchivePopulation);
+        int parentIndex1 = randomGenerator.getRandomValue(0, population.size() - 1);
+        S parent1 = population.get(parentIndex1);
+        matingPool.add(parent1);
 
-		/* JMetal progress initialization */
-		initProgress();
+        // 常にランダム交叉
+        int parentIndex2;
+        do {
+            parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
+        } while (parentIndex1 == parentIndex2);
+        matingPool.add(population.get(parentIndex2));
 
-		/* GA loop */
-		while(!isStoppingConditionReached()) {
+        // 近傍のセルから2つ目の親を選択
+        /*Pair<Integer, Integer> parent1Key = getGridKey(parent1, globalGridWidth, localGridWidth);
+        List<S> neighbors = getNeighborSolutions(parent1Key, population, globalGridWidth, localGridWidth);
 
-			/* 親個体選択 - Mating Selection */
-			matingPopulation = selection(population);
-			/* 子個体群生成 - Offspring Generation */
-			offspringPopulation = reproduction(matingPopulation);
-			/* 子個体群評価 - Offspring Evaluation */
-			offspringPopulation = evaluatePopulation(offspringPopulation);
-			/* 未勝利個体削除*/
-			offspringPopulation = removeNoWinnerMichiganSolution(offspringPopulation);
+        if (!neighbors.isEmpty() && JMetalRandom.getInstance().nextDouble() < 0.5) {
+            // 近傍交叉
+            S parent2 = neighbors.get(randomGenerator.getRandomValue(0, neighbors.size() - 1));
+            matingPool.add(parent2);
+        } else {
+            // ランダム交叉
+            int parentIndex2;
+            do {
+                parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
+            } while (parentIndex1 == parentIndex2);
+            matingPool.add(population.get(parentIndex2));
+        }*/
 
-			//子個体群を特徴空間にマッピングし，エリートを選択
-			for (S solution : offspringPopulation) {
+        return matingPool;
+    }
 
-	            double ruleNum = ruleNumfunc.function(solution);
-	            double ASWRL = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) solution, train);
+    // 近傍の解を取得
+    private List<S> getNeighborSolutions(Pair<Integer, Integer> key, List<S> population, double globalGridWidth, double localGridWidth) {
+        List<S> neighbors = new ArrayList<>();
+        for (S solution : population) {
+            Pair<Integer, Integer> solutionKey = getGridKey(solution, globalGridWidth, localGridWidth);
+            if (Math.abs(solutionKey.getLeft() - key.getLeft()) <= 5 &&
+                Math.abs(solutionKey.getRight() - key.getRight()) <= 5) {
+            	neighbors.add(solution);
+            }
+        }
+        return neighbors;
+    }
 
-	            int globalIndex = (int)(ruleNum/globalGridWidth);
-	            int localIndex = (int)(ASWRL/localGridWidth);
+    // 解のグリッドキーを取得
+    private Pair<Integer, Integer> getGridKey(S solution, double globalGridWidth, double localGridWidth) {
+        double ruleNum = ruleNumfunc.function(solution);
+        double ASWRL = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) solution, train);
 
-	            //グリッド座標をキーとする
-	            Pair<Integer, Integer> key = Pair.of(globalIndex, localIndex);
+         int globalIndex = (int)(ruleNum/globalGridWidth);
+         int localIndex = (int)(ASWRL/localGridWidth);
 
-	            //エリート選択: 同じセルに既に個体が存在する場合は，より優れた個体で更新（存在しない場合は，新しく個体を配置）
-	            eliteMap.compute(key, (k, existingSolution) -> {
-	                if (existingSolution == null || solution.getObjective(0) < existingSolution.getObjective(0)) {
-	                    return (S) solution.copy();
-	                } else {
-	                    return existingSolution;
-	                }
-	            });
-	        }
+        return Pair.of(globalIndex, localIndex);
+    }
 
-			/* 個体群更新・環境選択 - Environmental Selection */
-			population = replacement(population, offspringPopulation);
-
-			/*生成した個体群をアーカイブに追加*/
-			for (S solution : population) {
-			    PittsburghSolution<?> copiedSolution = solution.copy();
-			    ArchivePopulation.add((S) copiedSolution);
-			}
-
-			/*アーカイブから非劣解を抽出（ただし，計算量大きくなるのでコメントアウト）*/
-			/*使用する際は，SetからListへの変換が必要*/
-			//ArchivePopulation = SolutionListUtils.getNonDominatedSolutions(ArchivePopulation);
-
-			/* JMetal progress update */
-
-			updateProgress();
-		}
-
-        // エリート個体のみを含むリスト
-        elitePopulation = new ArrayList<>(eliteMap.values());
-
-		/* ===  END  === */
-		totalComputingTime = System.currentTimeMillis() - startTime;
-	}
 
 	@Override
 	protected void initProgress() {
@@ -284,7 +284,7 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 	    Integer evaluations = (Integer)algorithmStatusData.get("EVALUATIONS");
 
 	    if(evaluations != null) {
-	        new PittsburghSolutionListOutput((List<PittsburghSolution<?>>) this.getResult())
+	        new PittsburghSolutionListOutput((List<PittsburghSolution<?>>) this.getPopulation())
             .setVarFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("VAR-%d.csv", evaluations), ","))
             .setFunFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("FUN-%d.csv", evaluations), ","))
             .print();
@@ -310,7 +310,7 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 	    Integer evaluations = (Integer)algorithmStatusData.get("EVALUATIONS");
 	    if(evaluations != null) {
 	    	if(evaluations * 10 % frequency == 0 && evaluations % frequency != 0) System.out.print(". ");
-	    	if(evaluations % frequency == 0) {
+	    	if(evaluations % frequency == 0 && evaluations != Consts.TERMINATE_EVALUATION) {
 	    		System.out.print(" ->");
 	    		for(int i=0; i<getPopulation().get(0).getNumberOfObjectives(); i++) {
 	    			double tmp=0;
@@ -329,26 +329,40 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 	            .print();*/
 
 	    		/*出力された数値が0埋めされないversion*/
-    	        new PittsburghSolutionListOutput((List<PittsburghSolution<?>>) this.getResult())
+    	        new PittsburghSolutionListOutput((List<PittsburghSolution<?>>) this.getPopulation())
+                .setFunFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("FUN-%d.csv", evaluations), ","))
+                .printFunonly();
+
+	    		/*Element population = XML_manager.getInstance().createElement(XML_TagName.population);
+
+	    		for(S solution: this.getResult()) {
+	    			Element pittsburghSolution = solution.toElement();
+	    			XML_manager.getInstance().addElement(population, pittsburghSolution);
+	    		}
+
+	    		Element generations = XML_manager.getInstance().createElement(XML_TagName.generations, XML_TagName.evaluation, String.valueOf(evaluations));
+
+	    		//knowlwdge出力用
+	    		XML_manager.getInstance().addElement(generations, Knowledge.getInstance().toElement());
+	    		XML_manager.getInstance().addElement(generations, population);
+		    	XML_manager.getInstance().addElement(XML_manager.getInstance().getRoot(), generations);*/
+	    	}
+	    	if(evaluations == Consts.TERMINATE_EVALUATION) {
+	    		System.out.print(" ->");
+	    		for(int i=0; i<getPopulation().get(0).getNumberOfObjectives(); i++) {
+	    			double tmp=0;
+	    			for(int j=0; j<getPopulation().size(); j++) {
+	    				tmp += getPopulation().get(j).getObjective(i);
+	    			}
+	    			tmp /= getPopulation().size();
+		    		System.out.print(String.format("objectives[%d]: %.8f.. ", i, tmp));
+	    		}
+	    		System.out.println(); System.out.println();
+
+	    		new PittsburghSolutionListOutput((List<PittsburghSolution<?>>) this.getPopulation())
                 .setVarFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("VAR-%d.csv", evaluations), ","))
                 .setFunFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("FUN-%d.csv", evaluations), ","))
                 .print();
-
-    	        /*frequencyごとにアーカイブ出力（容量重すぎるので，いったんコメントアウト）*/
-    	        /*使用する際は，SetからListへの変換が必要*/
-    	        /*new PittsburghSolutionListOutput((List<PittsburghSolution<?>>) this.getArchivePopulation())
-                .setVarFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("VARARC-%d.csv", evaluations), ","))
-                .setFunFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("FUNARC-%d.csv", evaluations), ","))
-                .print();*/
-
-    	        /*最終的なアーカイブを出力（FUNARCはresultsでカバーできるので不要）（非劣解抽出前なので，コメントアウト）*/
-    	        /*使用する際は，SetからListへの変換が必要*/
-    	 	    /*if(evaluations == Consts.TERMINATE_EVALUATION) {
-	    	        new PittsburghSolutionListOutput((List<PittsburghSolution<?>>) this.getArchivePopulation())
-                    .setVarFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("VARARC-%d.csv", evaluations), ","))
-                    .print();
-	    	    }*/
-
 	    	}
 	    }
 		else {
@@ -399,20 +413,14 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 		return SolutionListUtils.getNonDominatedSolutions(getPopulation());
 	}
 
-	/*アーカイブから非劣解を抽出（現時点では不要なのでコメントアウト）*/
-	/*使用する際は，SetからListへの変換が必要*/
-	/*public List<S> getResultArchive(){
-		return SolutionListUtils.getNonDominatedSolutions(ArchivePopulation);
-	}*/
-
 	@Override
 	public String getName() {
-		return "Hybrid-style Multi-objective FGBML with NSGA-II";
+		return "Hybrid-style FGBML with MAP-Elites";
 	}
 
 	@Override
 	public String getDescription() {
-		return "Hybrid-style Multi-objective Fuzzy Genetics-Based Machine Learning with NSGA-II";
+		return "Hybrid-style Fuzzy Genetics-Based Machine Learning with MAP-Elites";
 	}
 
 	public Map<String, Object> getAlgorithmStatusData() {
@@ -431,20 +439,4 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 	public long getEvaluations() {
 		return evaluations;
 	}
-
-	/*Getter for Archive*/
-	public Set<S> getArchivePopulation(){
-		return ArchivePopulation;
-	}
-
-	/*Setter for Archive*/
-	public void setArchivePopulation(Set<S> ArchivePopulation) {
-		this.ArchivePopulation = ArchivePopulation;
-	}
-
-	/*Getter for elite*/
-	public List<S> getelitePopulation(){
-		return elitePopulation;
-	}
-
 }

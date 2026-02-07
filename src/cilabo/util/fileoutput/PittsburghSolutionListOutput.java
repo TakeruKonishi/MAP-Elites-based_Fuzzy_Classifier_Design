@@ -69,10 +69,28 @@ public class PittsburghSolutionListOutput{
 
 	    try {
 		      if (solutionList.size() > 0) {
+		        // ヘッダー行を出力
+		        // 属性数を取得（最初の個体の最初のルールから）
+		        int numAttributes = solutionList.get(0).getNumberOfVariables() > 0 ?
+		            solutionList.get(0).getVariable(0).getNumberOfVariables() : 0;
+
+		        // ヘッダーを構築
+		        StringBuilder header = new StringBuilder();
+		        header.append("SolutionID,RuleID");
+		        for (int i = 0; i < numAttributes; i++) {
+		          header.append(",Attr").append(i);
+		        }
+		        header.append(",ClassLabel,RuleWeight,NumberOfClassifierPatterns,NumberOfWinner");
+		        bufferedWriter.write(header.toString());
+		        bufferedWriter.newLine();
+
+		        // 各個体（Pittsburgh Solution）について
 		        for (int i = 0; i < solutionList.size(); i++) {
-		          //for (int j = 0; j < solutionList.get(i).getNumberOfVariables(); j++) {
-		            bufferedWriter.write("" + solutionList.get(i).toString());
-		          //}
+		          // 各ルール（Michigan Solution）について
+		          for (int j = 0; j < solutionList.get(i).getNumberOfVariables(); j++) {
+		            bufferedWriter.write(solutionList.get(i).toCSVString(i, j, context.getSeparator()));
+		            bufferedWriter.newLine();
+		          }
 		        }
 		      }
 

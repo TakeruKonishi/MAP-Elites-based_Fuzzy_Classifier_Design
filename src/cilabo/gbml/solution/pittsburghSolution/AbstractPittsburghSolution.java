@@ -69,4 +69,40 @@ public abstract class AbstractPittsburghSolution <michiganSolution extends Michi
 			this.variables.get(i).learning();
 		}
 	}
+
+	/**
+	 * CSV形式で1ルールの情報を返す（1ルール1行形式）
+	 * @param solutionID Pittsburgh Solutionの番号
+	 * @param ruleID ルールの番号（このPittsburgh Solution内での番号）
+	 * @param separator 区切り文字
+	 * @return CSV形式の文字列
+	 */
+	public String toCSVString(int solutionID, int ruleID, String separator) {
+		StringBuilder str = new StringBuilder();
+
+		// SolutionID, RuleID
+		str.append(solutionID).append(separator).append(ruleID);
+
+		// 各属性のファジィ集合ID（Attr0, Attr1, ...）
+		michiganSolution rule = this.getVariable(ruleID);
+		for (int i = 0; i < rule.getNumberOfVariables(); i++) {
+			str.append(separator).append(rule.getVariable(i));
+		}
+
+		// ClassLabel
+		str.append(separator).append(rule.getRule().getClassLabel().toString());
+
+		// RuleWeight
+		str.append(separator).append(rule.getRule().getRuleWeight().getRuleWeightValue());
+
+		// Attributes: NumberOfClassifierPatterns, NumberOfWinner
+		// 属性のキーは完全なクラス名（パッケージ名を含む）
+		Object numClassifierPatterns = rule.getAttribute("cilabo.gbml.solution.util.attribute.NumberOfClassifierPatterns");
+		Object numWinner = rule.getAttribute("cilabo.gbml.solution.util.attribute.NumberOfWinner");
+
+		str.append(separator).append(numClassifierPatterns != null ? numClassifierPatterns.toString() : "0");
+		str.append(separator).append(numWinner != null ? numWinner.toString() : "0");
+
+		return str.toString();
+	}
 }

@@ -39,6 +39,7 @@ import cilabo.fuzzy.rule.consequent.factory.impl.MoFGBML_Learning;
 import cilabo.fuzzy.rule.impl.Rule_Basic;
 import cilabo.gbml.algorithm.HybridMoFGBMLwithNSGAII;
 import cilabo.gbml.objectivefunction.michigan.RuleLength;
+import cilabo.gbml.objectivefunction.pittsburgh.AverageSingleWinnerRuleLength;
 import cilabo.gbml.objectivefunction.pittsburgh.ErrorRate;
 import cilabo.gbml.objectivefunction.pittsburgh.NumberOfRules;
 import cilabo.gbml.operator.crossover.HybridGBMLcrossover;
@@ -46,6 +47,7 @@ import cilabo.gbml.operator.crossover.MichiganCrossover;
 import cilabo.gbml.operator.crossover.PittsburghCrossover;
 import cilabo.gbml.operator.mutation.PittsburghMutation;
 import cilabo.gbml.problem.pittsburghFGBML_Problem.impl.PittsburghFGBML_Basic;
+import cilabo.gbml.problem.pittsburghFGBML_Problem.impl.PittsburghFGBML_NR_ASWRL;
 import cilabo.gbml.solution.michiganSolution.AbstractMichiganSolution;
 import cilabo.gbml.solution.michiganSolution.MichiganSolution.MichiganSolutionBuilder;
 import cilabo.gbml.solution.michiganSolution.impl.MichiganSolution_Basic;
@@ -144,7 +146,7 @@ public class MoFGBML_Basic_Main {
 	 *
 	 */
 	public static void HybridStyleMoFGBML (DataSet<Pattern_Basic> train, DataSet<Pattern_Basic> test) {
-		Random.getInstance().initRandom(2022);
+		Random.getInstance().initRandom(Consts.RAND_SEED);
 		String sep = File.separator;
 
 		Parameters parameters = new Parameters(train);
@@ -156,7 +158,7 @@ public class MoFGBML_Basic_Main {
 		int numberOfConstraints_Michigan = 0;
 
 		int numberOfvariables_Pittsburgh = Consts.INITIATION_RULE_NUM;
-		int numberOfObjectives_Pittsburgh = 2;
+		int numberOfObjectives_Pittsburgh = 3;
 		int numberOfConstraints_Pittsburgh = 0;
 
 		RuleBuilder<Rule_Basic, ?, ?> ruleBuilder = new Rule_Basic.RuleBuilder_Basic(
@@ -176,9 +178,9 @@ public class MoFGBML_Basic_Main {
 
 		/* MOP: Multi-objective Optimization Problem */
 		Problem<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> problem =
-				new PittsburghFGBML_Basic<MichiganSolution_Basic<Rule_Basic>>(
+				new PittsburghFGBML_NR_ASWRL<MichiganSolution_Basic<Rule_Basic>>(
 						numberOfvariables_Pittsburgh,
-						2,
+						3,
 						numberOfConstraints_Pittsburgh,
 						train,
 						michiganSolutionBuilder,
@@ -207,7 +209,7 @@ public class MoFGBML_Basic_Main {
 
 		/* Algorithm: Hybrid-style MoFGBML with NSGA-II */
 		HybridMoFGBMLwithNSGAII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
-			= new HybridMoFGBMLwithNSGAII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(problem,
+			= new HybridMoFGBMLwithNSGAII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(train, problem,
 											Consts.POPULATION_SIZE,
 											Consts.OFFSPRING_POPULATION_SIZE,
 											Consts.OUTPUT_FREQUENCY,
@@ -299,13 +301,16 @@ public class MoFGBML_Basic_Main {
 
 		//Results of final generation
 	    ArrayList<String> strs = new ArrayList<>();
-	    String str = "pop,train,NR,RL,Cover,RW,test";
+	    String str = "pop,train,NR,ASWRL_tra,ASWRL_tst,RL,Cover,RW,test";
 	    strs.add(str);
 
 	    for(int i = 0; i < nonDominatedSolutions.size(); i++) {
             double errorRatetrain = nonDominatedSolutions.get(i).getObjective(0);
             NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFunc = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
             double ruleNum = RuleNumFunc.function(nonDominatedSolutions.get(i));
+            AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfunc = new AverageSingleWinnerRuleLength<>();
+            double ASWRL_tra = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) nonDominatedSolutions.get(i), train);
+            double ASWRL_tst = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) nonDominatedSolutions.get(i), test);
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLength = 0;
             for (int j = 0; j < nonDominatedSolutions.get(i).getNumberOfVariables(); j++) {
@@ -365,6 +370,8 @@ public class MoFGBML_Basic_Main {
 	    	str = String.valueOf(i);
 	    	str += "," + errorRatetrain;
 	    	str += "," + ruleNum;
+	    	str += "," + ASWRL_tra;
+	    	str += "," + ASWRL_tst;
 	    	str += "," + TotalRuleLength;
 	    	str += "," + TotalCover;
 	    	str += "," + AveRW;
@@ -376,13 +383,16 @@ public class MoFGBML_Basic_Main {
 
 	    //Results of archive population
 	    ArrayList<String> strsARC = new ArrayList<>();
-	    String strARC = "pop,train,NR,RL,Cover,RW,test";
+	    String strARC = "pop,train,NR,ASWRL_tra,ASWRL_tst,RL,Cover,RW,test";
 	    strsARC.add(strARC);
 
 	    for(int i = 0; i < nonDominatedSolutionsARC.size(); i++) {
             double errorRatetrainARC = nonDominatedSolutionsARC.get(i).getObjective(0);
             NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFuncARC = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
             double ruleNumARC = RuleNumFuncARC.function(nonDominatedSolutionsARC.get(i));
+            AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfuncARC = new AverageSingleWinnerRuleLength<>();
+            double ASWRL_traARC = ASWRLfuncARC.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) nonDominatedSolutionsARC.get(i), train);
+            double ASWRL_tstARC = ASWRLfuncARC.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) nonDominatedSolutionsARC.get(i), test);
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFuncARC = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLengthARC = 0;
             for (int j = 0; j < nonDominatedSolutionsARC.get(i).getNumberOfVariables(); j++) {
@@ -441,6 +451,8 @@ public class MoFGBML_Basic_Main {
 	    	strARC = String.valueOf(i);
 	    	strARC += "," + errorRatetrainARC;
 	    	strARC += "," + ruleNumARC;
+	    	strARC += "," + ASWRL_traARC;
+	    	strARC += "," + ASWRL_tstARC;
 	    	strARC += "," + TotalRuleLengthARC;
 	    	strARC += "," + TotalCoverARC;
 	    	strARC += "," + AveRWARC;
@@ -452,13 +464,16 @@ public class MoFGBML_Basic_Main {
 
 	    //Results of elite population
 	    ArrayList<String> strselite = new ArrayList<>();
-	    String strelite = "pop,train,NR,RL,Cover,RW,test";
+	    String strelite = "pop,train,NR,ASWRL_tra,ASWRL_tst,RL,Cover,RW,test";
 	    strselite.add(strelite);
 
 	    for(int i = 0; i < elite.size(); i++) {
             double errorRatetrainelite = elite.get(i).getObjective(0);
             NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFuncelite = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
             double ruleNumelite = RuleNumFuncelite.function(elite.get(i));
+            AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfuncelite = new AverageSingleWinnerRuleLength<>();
+            double ASWRL_traelite = ASWRLfuncelite.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) elite.get(i), train);
+            double ASWRL_tstelite = ASWRLfuncelite.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) elite.get(i), test);
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFuncelite= new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLengthelite = 0;
             for (int j = 0; j < elite.get(i).getNumberOfVariables(); j++) {
@@ -517,6 +532,8 @@ public class MoFGBML_Basic_Main {
 	    	strelite = String.valueOf(i);
 	    	strelite += "," + errorRatetrainelite;
 	    	strelite += "," + ruleNumelite;
+	    	strelite += "," + ASWRL_traelite;
+	    	strelite += "," + ASWRL_tstelite;
 	    	strelite += "," + TotalRuleLengthelite;
 	    	strelite += "," + TotalCoverelite;
 	    	strelite += "," + AveRWelite;

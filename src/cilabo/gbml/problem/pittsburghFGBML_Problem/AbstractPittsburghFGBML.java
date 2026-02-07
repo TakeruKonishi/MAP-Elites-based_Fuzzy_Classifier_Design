@@ -5,10 +5,12 @@ import org.uma.jmetal.problem.Problem;
 
 import cilabo.data.DataSet;
 import cilabo.fuzzy.classifier.Classifier;
+import cilabo.gbml.objectivefunction.pittsburgh.NumberOfRules;
 import cilabo.gbml.solution.michiganSolution.MichiganSolution;
 import cilabo.gbml.solution.michiganSolution.MichiganSolution.MichiganSolutionBuilder;
 import cilabo.gbml.solution.pittsburghSolution.PittsburghSolution;
 import cilabo.gbml.solution.util.attribute.NumberOfWinner;
+import cilabo.main.ExperienceParameter.OBJECTIVES_FOR_PITTSBURGH;
 
 public abstract class AbstractPittsburghFGBML <pittsburghSolutionObject extends PittsburghSolution<michiganSolution>,
 		michiganSolution extends MichiganSolution<?>>

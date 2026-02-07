@@ -60,6 +60,15 @@ public interface PittsburghSolution <michiganSolution extends MichiganSolution<?
 
 	public Element toElement();
 
+	/**
+	 * CSV形式で1ルールの情報を返す（1ルール1行形式）
+	 * @param solutionID Pittsburgh Solutionの番号
+	 * @param ruleID ルールの番号（このPittsburgh Solution内での番号）
+	 * @param separator 区切り文字
+	 * @return CSV形式の文字列
+	 */
+	public String toCSVString(int solutionID, int ruleID, String separator);
+
 	@Override
 	public PittsburghSolution<michiganSolution> copy();
 }

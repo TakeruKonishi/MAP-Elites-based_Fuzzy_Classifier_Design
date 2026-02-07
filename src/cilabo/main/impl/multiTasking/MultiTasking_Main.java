@@ -204,7 +204,7 @@ public class MultiTasking_Main {
 
 		/* Algorithm: Hybrid-style MoFGBML with NSGA-II */
 		HybridMoFGBMLwithNSGAII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_MultiClass>>> algorithm
-			= new HybridMoFGBMLwithNSGAII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_MultiClass>>>(problem,
+			= new HybridMoFGBMLwithNSGAII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_MultiClass>>>(train, problem,
 											Consts.POPULATION_SIZE,
 											Consts.OFFSPRING_POPULATION_SIZE,
 											Consts.OUTPUT_FREQUENCY,

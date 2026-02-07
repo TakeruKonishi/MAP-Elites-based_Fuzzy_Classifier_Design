@@ -212,7 +212,7 @@ public class DesignedKnowledge_Main {
 
 		/* Algorithm: Hybrid-style MoFGBML with NSGA-II */
 		HybridMoFGBMLwithNSGAII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
-			= new HybridMoFGBMLwithNSGAII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(problem,
+			= new HybridMoFGBMLwithNSGAII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(train, problem,
 											Consts.POPULATION_SIZE,
 											Consts.OFFSPRING_POPULATION_SIZE,
 											Consts.OUTPUT_FREQUENCY,
