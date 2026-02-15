@@ -6,7 +6,7 @@ import cilabo.main.AbstractArgs;
 import cilabo.main.Consts;
 import cilabo.utility.Output;
 
-public class FGBML_MAPElites_CommandLineArgs extends AbstractArgs {
+public class MEFC_CommandLineArgs extends AbstractArgs {
 	// ************************************************************
 	/** データセット名 */
 	public static String dataName;
@@ -28,7 +28,7 @@ public class FGBML_MAPElites_CommandLineArgs extends AbstractArgs {
 		if(args.length < n) {
 			System.out.println("Need n=" + String.valueOf(n) + " arguments.");
 			System.out.println("---");
-			System.out.print(FGBML_MAPElites_CommandLineArgs.getParamsString());
+			System.out.print(MEFC_CommandLineArgs.getParamsString());
 			System.out.println("---");
 			return;
 		}

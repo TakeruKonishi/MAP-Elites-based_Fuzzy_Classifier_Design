@@ -41,6 +41,7 @@ import cilabo.gbml.algorithm.HybridMoFGBMLwithNSGAII;
 import cilabo.gbml.objectivefunction.michigan.RuleLength;
 import cilabo.gbml.objectivefunction.pittsburgh.AverageSingleWinnerRuleLength;
 import cilabo.gbml.objectivefunction.pittsburgh.ErrorRate;
+import cilabo.gbml.objectivefunction.pittsburgh.ErrorRateNoSideEffect;
 import cilabo.gbml.objectivefunction.pittsburgh.NumberOfRules;
 import cilabo.gbml.operator.crossover.HybridGBMLcrossover;
 import cilabo.gbml.operator.crossover.MichiganCrossover;
@@ -53,6 +54,7 @@ import cilabo.gbml.solution.michiganSolution.MichiganSolution.MichiganSolutionBu
 import cilabo.gbml.solution.michiganSolution.impl.MichiganSolution_Basic;
 import cilabo.gbml.solution.pittsburghSolution.impl.PittsburghSolution_Basic;
 import cilabo.main.Consts;
+import cilabo.main.ExperienceParameter.OBJECTIVES_FOR_PITTSBURGH;
 import cilabo.util.fileoutput.PittsburghSolutionListOutputX;
 import cilabo.utility.Output;
 import cilabo.utility.Parallel;
@@ -118,9 +120,8 @@ public class MoFGBML_Basic_Main {
 
 		/* Load Dataset ======================== */
 		Input.loadTrainTestFiles_Basic(MoFGBML_Basic_CommandLineArgs.trainFile, MoFGBML_Basic_CommandLineArgs.testFile);
-		DataSet<Pattern_Basic> test = (DataSet<Pattern_Basic>) DataSetManager.getInstance().getTests().get(0);
 		DataSet<Pattern_Basic> train = (DataSet<Pattern_Basic>) DataSetManager.getInstance().getTrains().get(0);
-
+		DataSet<Pattern_Basic> test = (DataSet<Pattern_Basic>) DataSetManager.getInstance().getTests().get(0);
 
 		/** XML ファイル出力用インスタンスの生成*/
 		XML_manager.getInstance();
@@ -306,11 +307,12 @@ public class MoFGBML_Basic_Main {
 
 	    for(int i = 0; i < nonDominatedSolutions.size(); i++) {
             double errorRatetrain = nonDominatedSolutions.get(i).getObjective(0);
-            NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFunc = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
-            double ruleNum = RuleNumFunc.function(nonDominatedSolutions.get(i));
+        	double ruleNum = nonDominatedSolutions.get(i).getObjective(1);
+            double ASWRL_tra = nonDominatedSolutions.get(i).getObjective(2);
             AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfunc = new AverageSingleWinnerRuleLength<>();
-            double ASWRL_tra = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) nonDominatedSolutions.get(i), train);
             double ASWRL_tst = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) nonDominatedSolutions.get(i), test);
+            int ndim = test.getNdim();
+            ASWRL_tst = (ndim > 0) ? (ASWRL_tst / (double)ndim) : 0.0;
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLength = 0;
             for (int j = 0; j < nonDominatedSolutions.get(i).getNumberOfVariables(); j++) {
@@ -363,8 +365,8 @@ public class MoFGBML_Basic_Main {
             double AveRW = TotalRW/(nonDominatedSolutions.get(i).getNumberOfVariables());
 
 
-            ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function1
-			= new ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
+            ErrorRateNoSideEffect<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function1
+			= new ErrorRateNoSideEffect<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
 		    double errorRatetest = function1.function(nonDominatedSolutions.get(i), test);
 
 	    	str = String.valueOf(i);
@@ -388,11 +390,12 @@ public class MoFGBML_Basic_Main {
 
 	    for(int i = 0; i < nonDominatedSolutionsARC.size(); i++) {
             double errorRatetrainARC = nonDominatedSolutionsARC.get(i).getObjective(0);
-            NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFuncARC = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
-            double ruleNumARC = RuleNumFuncARC.function(nonDominatedSolutionsARC.get(i));
+        	double ruleNumARC = nonDominatedSolutionsARC.get(i).getObjective(1);
+            double ASWRL_traARC = nonDominatedSolutionsARC.get(i).getObjective(2);
             AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfuncARC = new AverageSingleWinnerRuleLength<>();
-            double ASWRL_traARC = ASWRLfuncARC.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) nonDominatedSolutionsARC.get(i), train);
             double ASWRL_tstARC = ASWRLfuncARC.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) nonDominatedSolutionsARC.get(i), test);
+            int ndim = test.getNdim();
+            ASWRL_tstARC = (ndim > 0) ? (ASWRL_tstARC / (double)ndim) : 0.0;
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFuncARC = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLengthARC = 0;
             for (int j = 0; j < nonDominatedSolutionsARC.get(i).getNumberOfVariables(); j++) {
@@ -444,8 +447,8 @@ public class MoFGBML_Basic_Main {
             }
             double AveRWARC = TotalRWARC/(nonDominatedSolutionsARC.get(i).getNumberOfVariables());
 
-            ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function1ARC
-			= new ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
+            ErrorRateNoSideEffect<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function1ARC
+			= new ErrorRateNoSideEffect<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
 		    double errorRatetestARC = function1ARC.function(nonDominatedSolutionsARC.get(i), test);
 
 	    	strARC = String.valueOf(i);
@@ -469,11 +472,12 @@ public class MoFGBML_Basic_Main {
 
 	    for(int i = 0; i < elite.size(); i++) {
             double errorRatetrainelite = elite.get(i).getObjective(0);
-            NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> RuleNumFuncelite = new NumberOfRules<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
-            double ruleNumelite = RuleNumFuncelite.function(elite.get(i));
+            double ruleNumelite = elite.get(i).getObjective(1);
+            double ASWRL_traelite = elite.get(i).getObjective(2);
             AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfuncelite = new AverageSingleWinnerRuleLength<>();
-            double ASWRL_traelite = ASWRLfuncelite.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) elite.get(i), train);
             double ASWRL_tstelite = ASWRLfuncelite.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) elite.get(i), test);
+            int ndim = test.getNdim();
+            ASWRL_tstelite = (ndim > 0) ? (ASWRL_tstelite / (double)ndim) : 0.0;
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFuncelite= new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLengthelite = 0;
             for (int j = 0; j < elite.get(i).getNumberOfVariables(); j++) {
@@ -525,8 +529,8 @@ public class MoFGBML_Basic_Main {
             }
             double AveRWelite = TotalRWelite/(elite.get(i).getNumberOfVariables());
 
-            ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function1elite
-			= new ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
+            ErrorRateNoSideEffect<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function1elite
+			= new ErrorRateNoSideEffect<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
 		    double errorRatetestelite= function1elite.function(elite.get(i), test);
 
 	    	strelite = String.valueOf(i);

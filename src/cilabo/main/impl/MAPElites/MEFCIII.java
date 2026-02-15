@@ -43,7 +43,7 @@ import cilabo.gbml.solution.pittsburghSolution.impl.PittsburghSolution_Basic;
 import cilabo.main.Consts;
 import cilabo.util.fileoutput.PittsburghSolutionListOutput;
 
-public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
+public class MEFCIII <S extends PittsburghSolution<?>>
 	extends AbstractEvolutionaryAlgorithm<S, List<S>>
 	implements ObservableEntity {
 
@@ -76,10 +76,41 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
 	private final NumberOfRules<S> ruleNumfunc = new NumberOfRules<>();
 	private final AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfunc = new AverageSingleWinnerRuleLength<>();
 
+	private static final int BINS = 50;
+	private static final int MAX_GRID_INDEX = BINS - 1;
+	private static final double GLOBAL_GRID_WIDTH = 1.0;
+	private static final double LOCAL_GRID_WIDTH = 1.0 / BINS;
+
+	// ===== セル統計（ログ用）=====
+	private static class CellStat {
+	  int n;       // 親として使われた回数
+	  double mean; // 平均報酬
+	}
+	private final Map<Pair<Integer,Integer>, CellStat> cellStats = new LinkedHashMap<>();
+	private final Map<Pair<Integer,Integer>, Integer> eliteUpdateCounts = new LinkedHashMap<>();
+	private Pair<Integer,Integer> lastKey1 = null;
+	private Pair<Integer,Integer> lastKey2 = null;
+	// ============================
+
+	private CellStat statOf(Pair<Integer,Integer> key){
+		  return cellStats.computeIfAbsent(key, k -> new CellStat());
+		}
+
+	private void registerPull(Pair<Integer,Integer> key){
+		 if (key == null) return;
+		 statOf(key).n += 1;
+	}
+
+	private void applyReward(Pair<Integer,Integer> key, double r){
+		 if (key == null) return;
+		 CellStat st = statOf(key);
+		 if (st.n <= 0) return; // 念のため
+		 st.mean += (r - st.mean) / st.n;
+	}
 
 
 	/** Constructor */
-	public HybridFGBMLwithMAPElitesIII(
+	public MEFCIII(
 			/* Arguments */
 			DataSet<?> train,
 			Problem<S> problem,
@@ -114,9 +145,10 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
 		this.evaluation = new SequentialEvaluation<>();
 
 		this.algorithmStatusData = new HashMap<>();
-		this.observable = new DefaultObservable<>("Hybrid FGBML with MAP-Elites algorithm");
+		this.observable = new DefaultObservable<>("MEFCIII");
 
 	}
+
 
 	@Override
 	public void run() {
@@ -131,10 +163,6 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
         //各セルのエリート個体を保持するためのマップ
         Map<Pair<Integer,Integer>, S> eliteMap = new LinkedHashMap<>();
 
-        //グリッド幅の設定
-        double globalGridWidth = 1;  //ルール数のグリッド幅
-        double localGridWidth = 0.2;  //平均単一勝利ルール長のグリッド幅
-
 		/* Step 1. 初期個体群生成 - Initialization Population */
 		population = createInitialPopulation();
 		/* Step 2. 初期個体群評価 - Initial Population Evaluation */
@@ -143,7 +171,7 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
 		population = removeNoWinnerMichiganSolution(population);
 
 		// 初期個体群をマッピングしてエリート選択
-        updateEliteMap(population, eliteMap, globalGridWidth, localGridWidth);
+        updateEliteMap(population, eliteMap, GLOBAL_GRID_WIDTH, LOCAL_GRID_WIDTH);
 
         // エリート個体のみを含むリストを更新
         population = new ArrayList<>(eliteMap.values());
@@ -167,15 +195,37 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
 			// エリート個体のみを含むリストを更新
 	        population = new ArrayList<>(eliteMap.values());
 	        // 親個体選択
-	        matingPopulation = selectMatingPopulation(population, globalGridWidth, localGridWidth);
+	        matingPopulation = selectMatingPopulation(population, GLOBAL_GRID_WIDTH, LOCAL_GRID_WIDTH);
 			/* 子個体群生成 - Offspring Generation */
             offspringPopulation = reproduction(matingPopulation);
+
+            boolean usedP2 = false;
+            Object attr = offspringPopulation.get(0).getAttribute("USED_PARENT2");
+            if (!(attr instanceof Boolean)) {
+              throw new IllegalStateException("USED_PARENT2 is missing on offspring after reproduction. attr=" + attr);
+            }
+            usedP2 = (Boolean) attr;
+
 			/* 子個体群評価 - Offspring Evaluation */
             offspringPopulation = evaluatePopulation(offspringPopulation);
 			/* 未勝利個体削除*/
             offspringPopulation = removeNoWinnerMichiganSolution(offspringPopulation);
 
-            updateEliteMap(offspringPopulation, eliteMap, globalGridWidth, localGridWidth);
+            // アーカイブ更新（更新があれば true）
+            boolean improved = updateEliteMap(offspringPopulation, eliteMap, GLOBAL_GRID_WIDTH, LOCAL_GRID_WIDTH);
+
+           //親回数の加算（親1は必ず、親2は usedP2 のときだけ）
+           registerPull(lastKey1);
+           if (usedP2 && lastKey2 != null && !lastKey2.equals(lastKey1)) {
+             registerPull(lastKey2);
+           }
+
+           //平均報酬（2値報酬：更新あり=1, なし=0）
+           double r = improved ? 1.0 : 0.0;
+           applyReward(lastKey1, r);
+           if (usedP2 && lastKey2 != null && !lastKey2.equals(lastKey1)) {
+             applyReward(lastKey2, r);
+           }
 
             // エリート個体のみを含むリストを更新
             population = new ArrayList<>(eliteMap.values());
@@ -184,29 +234,40 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
 			updateProgress();
 		}
 
+		writeCellStatsCsv(eliteMap);
+
 		/* ===  END  === */
 		totalComputingTime = System.currentTimeMillis() - startTime;
 	}
 
 	// エリートマップを更新するメソッド
-    private void updateEliteMap(List<S> solutions, Map<Pair<Integer, Integer>, S> eliteMap, double globalGridWidth, double localGridWidth) {
+    private boolean updateEliteMap(List<S> solutions, Map<Pair<Integer, Integer>, S> eliteMap, double globalGridWidth, double localGridWidth) {
+    	boolean changed = false;
         for (S solution : solutions) {
             double ruleNum = ruleNumfunc.function(solution);
             double ASWRL = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) solution, train);
+            int ndim = train.getNdim();
+            double normASWRL = (ndim > 0) ? (ASWRL / (double)ndim) : 0.0;
 
-            int globalIndex = (int)(ruleNum/globalGridWidth);
-            int localIndex = (int)(ASWRL/localGridWidth);
+            int globalIndex = (int)Math.floor((ruleNum - 1.0) / globalGridWidth);
+            globalIndex = Math.max(0, Math.min(MAX_GRID_INDEX, globalIndex));
+            int localIndex = (int)Math.floor(normASWRL / localGridWidth);
+            localIndex = Math.max(0, Math.min(MAX_GRID_INDEX, localIndex));
 
             Pair<Integer, Integer> key = Pair.of(globalIndex, localIndex);
 
-            eliteMap.compute(key, (k, existingSolution) -> {
-                if (existingSolution == null || solution.getObjective(0) < existingSolution.getObjective(0)) {
-                    return (S) solution.copy();
-                } else {
-                    return existingSolution;
-                }
-            });
+            // まだ存在しないキーは統計用マップにも登録
+            cellStats.computeIfAbsent(key, k -> new CellStat());
+            eliteUpdateCounts.putIfAbsent(key, 0);
+
+            S prev = eliteMap.get(key);
+            if (prev == null || solution.getObjective(0) < prev.getObjective(0)) {
+              eliteMap.put(key, (S) solution.copy());
+              eliteUpdateCounts.merge(key, 1, Integer::sum);
+              changed = true;
+            }
         }
+        return changed;
     }
 
     private List<S> selectMatingPopulation(List<S> population, double globalGridWidth, double localGridWidth) {
@@ -222,7 +283,8 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
         do {
             parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
         } while (parentIndex1 == parentIndex2);
-        matingPool.add(population.get(parentIndex2));
+        S parent2 = population.get(parentIndex2);
+        matingPool.add(parent2);
 
         // 近傍のセルから2つ目の親を選択
         /*Pair<Integer, Integer> parent1Key = getGridKey(parent1, globalGridWidth, localGridWidth);
@@ -238,8 +300,13 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
             do {
                 parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
             } while (parentIndex1 == parentIndex2);
-            matingPool.add(population.get(parentIndex2));
+            S parent2 = population.get(parentIndex2);
+            matingPool.add(parent2);
         }*/
+
+        //親セルキーを記録（後でpull/reward更新に使う）
+        lastKey1 = getGridKey(parent1, globalGridWidth, localGridWidth);
+        lastKey2 = getGridKey(parent2, globalGridWidth, localGridWidth);
 
         return matingPool;
     }
@@ -259,14 +326,98 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
 
     // 解のグリッドキーを取得
     private Pair<Integer, Integer> getGridKey(S solution, double globalGridWidth, double localGridWidth) {
-        double ruleNum = ruleNumfunc.function(solution);
+    	double ruleNum = ruleNumfunc.function(solution);
         double ASWRL = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) solution, train);
+        int ndim = train.getNdim();
+        double normASWRL = (ndim > 0) ? (ASWRL / (double)ndim) : 0.0;
 
-         int globalIndex = (int)(ruleNum/globalGridWidth);
-         int localIndex = (int)(ASWRL/localGridWidth);
+        int globalIndex = (int)Math.floor((ruleNum - 1.0) / globalGridWidth);
+        globalIndex = Math.max(0, Math.min(MAX_GRID_INDEX, globalIndex));
+        int localIndex = (int)Math.floor(normASWRL / localGridWidth);
+        localIndex = Math.max(0, Math.min(MAX_GRID_INDEX, localIndex));
 
         return Pair.of(globalIndex, localIndex);
     }
+
+    private void writeCellStatsCsv(Map<Pair<Integer,Integer>, S> eliteMap) {
+    	  String sep = File.separator;
+    	  String outPath = outputRootDir + sep + "cell_stats.csv";
+
+    	  List<Pair<Integer,Integer>> keys = new ArrayList<>(eliteMap.keySet());
+    	  keys.sort((a,b) -> {
+    	    int c1 = Integer.compare(a.getLeft(), b.getLeft());
+    	    if (c1 != 0) return c1;
+    	    return Integer.compare(a.getRight(), b.getRight());
+    	  });
+
+    	  try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.File(outPath))) {
+    	    pw.println("globalIndex,localIndex,parentPulls,meanReward,eliteUpdates");
+
+    	    for (Pair<Integer,Integer> key : keys) {
+    	      CellStat st = cellStats.get(key);
+    	      int pulls = (st == null) ? 0 : st.n;
+    	      double mean = (st == null) ? 0.0 : st.mean;
+    	      int updates = eliteUpdateCounts.getOrDefault(key, 0);
+
+    	      pw.printf(java.util.Locale.US, "%d,%d,%d,%.8f,%d%n",
+    	          key.getLeft(), key.getRight(), pulls, mean, updates);
+    	    }
+    	  } catch (java.io.FileNotFoundException e) {
+    	    throw new RuntimeException("Failed to write cell_stats.csv: " + outPath, e);
+    	  }
+    }
+
+    //===== QD推移出力 =====
+    private void appendQdProgressCsv(int evaluations, boolean overwrite) {
+     String sep = File.separator;
+     String outPath = outputRootDir + sep + "qd_progress.csv";
+     java.io.File file = new java.io.File(outPath);
+
+     // overwrite=true のときは新規作成（上書き）してヘッダを書く
+     boolean append = !overwrite;
+
+     List<S> elites = this.getPopulation();
+     int totalCells = BINS * BINS;
+
+     int coverageCells = (elites == null) ? 0 : elites.size();
+     double qdScore = 0.0;
+     double maxFitness = Double.NEGATIVE_INFINITY;
+
+     if (elites != null && !elites.isEmpty()) {
+  	    for (S s : elites) {
+  	      if (s == null) continue; // 念のため（基本は入らない前提）
+
+  	      double obj0 = s.getObjective(0);
+  	      double fitness = 1.0 - obj0;
+
+  	      qdScore += fitness;
+  	      if (fitness > maxFitness) {
+  	        maxFitness = fitness;
+  	      }
+  	    }
+     }
+
+     if (maxFitness == Double.NEGATIVE_INFINITY) {
+  	    maxFitness = 0.0; // エリートが空 or 全部nullの異常系
+     }
+
+     double coverageRatio = (totalCells > 0) ? (coverageCells / (double) totalCells) : 0.0;
+
+     try (java.io.PrintWriter pw =
+         new java.io.PrintWriter(new java.io.FileOutputStream(file, append))) {
+
+       if (overwrite) {
+      	 pw.println("evaluations,coverageCells,coverageRatio,qdScore,maxFitness");
+       }
+
+       pw.printf(java.util.Locale.US, "%d,%d,%.8f,%.8f,%.8f%n",
+      	        evaluations, coverageCells, coverageRatio, qdScore, maxFitness);
+
+     } catch (java.io.IOException e) {
+       throw new RuntimeException("Failed to write qd_progress.csv: " + outPath, e);
+     }
+    }
+    //======================
 
 
 	@Override
@@ -288,6 +439,8 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
             .setVarFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("VAR-%d.csv", evaluations), ","))
             .setFunFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("FUN-%d.csv", evaluations), ","))
             .print();
+
+	        appendQdProgressCsv(evaluations, true);
 	    }
 		else {
 			JMetalLogger.logger.warning(getClass().getName()
@@ -333,6 +486,8 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
                 .setFunFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("FUN-%d.csv", evaluations), ","))
                 .printFunonly();
 
+    	        appendQdProgressCsv(evaluations, false);
+
 	    		/*Element population = XML_manager.getInstance().createElement(XML_TagName.population);
 
 	    		for(S solution: this.getResult()) {
@@ -363,6 +518,8 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
                 .setVarFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("VAR-%d.csv", evaluations), ","))
                 .setFunFileOutputContext(new DefaultFileOutputContext(outputRootDir + sep + String.format("FUN-%d.csv", evaluations), ","))
                 .print();
+
+	    		appendQdProgressCsv(evaluations, false);
 	    	}
 	    }
 		else {
@@ -415,12 +572,12 @@ public class HybridFGBMLwithMAPElitesIII <S extends PittsburghSolution<?>>
 
 	@Override
 	public String getName() {
-		return "Hybrid-style FGBML with MAP-Elites";
+		return "MEFCIII";
 	}
 
 	@Override
 	public String getDescription() {
-		return "Hybrid-style Fuzzy Genetics-Based Machine Learning with MAP-Elites";
+		return "MEFCIII";
 	}
 
 	public Map<String, Object> getAlgorithmStatusData() {

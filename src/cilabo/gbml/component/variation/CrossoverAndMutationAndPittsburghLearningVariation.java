@@ -35,7 +35,8 @@ public class CrossoverAndMutationAndPittsburghLearningVariation<S extends Pittsb
 
 		int remainder = matingPoolSize % crossover.getNumberOfRequiredParents();
 		if(remainder != 0) {
-			matingPoolSize += remainder;
+			//matingPoolSize += remainder;
+			matingPoolSize += (crossover.getNumberOfRequiredParents() - remainder);
 		}
 	}
 

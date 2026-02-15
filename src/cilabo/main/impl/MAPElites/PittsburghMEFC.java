@@ -16,10 +16,10 @@ import cilabo.gbml.solution.pittsburghSolution.impl.PittsburghSolution_Basic;
  * cilabo.gbml.problem.pittsburghFGBML_Problem.impl.PittsburghFGBML_; を参考に作成
  *
  */
-public class PittsburghFGBML_MAPElites<michiganSolution extends MichiganSolution<?>>
+public class PittsburghMEFC<michiganSolution extends MichiganSolution<?>>
         extends AbstractPittsburghFGBML<PittsburghSolution_Basic<michiganSolution>, michiganSolution> implements Problem<PittsburghSolution_Basic<michiganSolution>> {
 
-    public PittsburghFGBML_MAPElites(
+    public PittsburghMEFC(
         	int numberOfVariables,
         	int numberOfObjectives,
         	int numberOfConstraints,
@@ -28,7 +28,7 @@ public class PittsburghFGBML_MAPElites<michiganSolution extends MichiganSolution
         	Classifier<michiganSolution> classifier) {
         super(numberOfVariables, numberOfObjectives, numberOfConstraints,
         			train, michiganSolutionBuilder, classifier);
-        this.setName("PittsburghFGBML_MAP-Elites");
+        this.setName("PittsburghMEFC");
     }
 
     @Override
@@ -58,7 +58,7 @@ public class PittsburghFGBML_MAPElites<michiganSolution extends MichiganSolution
 
 	@Override
 	public String toString() {
-		return "PittsburghFGBML_MAPElites [michiganSolutionBuilder=" + michiganSolutionBuilder
+		return "PittsburghMEFC [michiganSolutionBuilder=" + michiganSolutionBuilder
 				+ ", classifier=" + classifier + "]";
 	}
 

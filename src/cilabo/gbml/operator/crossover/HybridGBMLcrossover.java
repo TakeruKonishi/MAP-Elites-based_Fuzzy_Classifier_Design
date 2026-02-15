@@ -26,6 +26,7 @@ public class HybridGBMLcrossover <pittsburghSolution extends PittsburghSolution<
 	CrossoverOperator<pittsburghSolution> michiganX;
 	CrossoverOperator<pittsburghSolution> pittsburghX;
 
+	private static final String ATTR_USED_PARENT2 = "USED_PARENT2";
 
 	/** Constructor */
 	public HybridGBMLcrossover(double crossoverProbability, double michiganOperationProbability,
@@ -92,6 +93,8 @@ public class HybridGBMLcrossover <pittsburghSolution extends PittsburghSolution<
 	{
 		List<pittsburghSolution> offspring = new ArrayList<>();
 
+		boolean usedParent2 = false;
+
 		if(crossoverRandomGenerator.getRandomValue() < probability) {/* Do crossover */
 			/* Judge if two parents are same. */
 			double p;
@@ -103,6 +106,7 @@ public class HybridGBMLcrossover <pittsburghSolution extends PittsburghSolution<
 				List<pittsburghSolution> parents = new ArrayList<>();
 				parents.add((pittsburghSolution) parent1.copy());
 				offspring = michiganX.execute(parents);
+				usedParent2 = false;
 				if(!GeneralFunctions.checkRule((PittsburghSolution<MichiganSolution<?>>) offspring.get(0))) {
 					System.err.println("michiganX");
 				}
@@ -113,6 +117,7 @@ public class HybridGBMLcrossover <pittsburghSolution extends PittsburghSolution<
 				parents.add((pittsburghSolution) parent1.copy());
 				parents.add((pittsburghSolution) parent2.copy());
 				offspring = pittsburghX.execute(parents);
+				usedParent2 = true;
 				if(!GeneralFunctions.checkRule((PittsburghSolution<MichiganSolution<?>>) offspring.get(0))) {
 					System.err.println("pittsburghX");
 				}
@@ -122,8 +127,11 @@ public class HybridGBMLcrossover <pittsburghSolution extends PittsburghSolution<
 			offspring.add((pittsburghSolution) parent1.copy());
 			offspring.add((pittsburghSolution) parent2.copy());
 			int index = selectRandomGenerator.getRandomValue(0,  1);
+			usedParent2 = (index == 0);
 			offspring.remove(index);
 		}
+
+		offspring.get(0).setAttribute(ATTR_USED_PARENT2, usedParent2);
 
 		if(offspring.get(0).getNumberOfVariables() < 1) {System.err.println("incorrect input: number Of Rules is less than 1 @" + this.getClass().getSimpleName());}
 		return offspring;

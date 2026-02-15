@@ -48,11 +48,13 @@ public final class HeuristicRuleGenerationMethod implements AntecedentIndexFacto
 		//Don't careの決定
 		double dcRate;
 		if(Consts.IS_PROBABILITY_DONT_CARE) {
-			dcRate = Consts.DONT_CARE_RT;
+			//dcRate = Consts.DONT_CARE_RT;
+			dcRate = (dimension - 3) / (double)dimension;
 		}
 		else {
 			// (Ndim - const) / Ndim
-			dcRate = Math.max((dimension - Consts.ANTECEDENT_NUMBER_DO_NOT_DONT_CARE) / (double)dimension, Consts.DONT_CARE_RT);
+			//dcRate = Math.max((dimension - Consts.ANTECEDENT_NUMBER_DO_NOT_DONT_CARE) / (double)dimension, Consts.DONT_CARE_RT);
+			dcRate = (dimension - 3) / (double)dimension;
 		}
 
 		int[] antecedentIndex = new int[dimension];

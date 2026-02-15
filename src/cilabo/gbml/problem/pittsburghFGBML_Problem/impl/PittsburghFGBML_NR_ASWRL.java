@@ -43,7 +43,9 @@ public class PittsburghFGBML_NR_ASWRL <michiganSolution extends MichiganSolution
 		double f2 = function2.function(solution);
 		/* The third objective */
 		AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function3 = new AverageSingleWinnerRuleLength<>();
-        double f3 = function3.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) solution, train);
+        double ASWRL = function3.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) solution, train);
+        final int ndim = train.getNdim();
+        double f3 = (ndim > 0) ? (ASWRL / (double)ndim) : 0.0;
 
 		solution.setObjective(OBJECTIVES_FOR_PITTSBURGH.ErrorRateDtra.toInt(), f1);
 		solution.setObjective(OBJECTIVES_FOR_PITTSBURGH.NumberOfRule.toInt(), f2);

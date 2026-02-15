@@ -43,7 +43,7 @@ import cilabo.gbml.solution.pittsburghSolution.impl.PittsburghSolution_Basic;
 import cilabo.main.Consts;
 import cilabo.util.fileoutput.PittsburghSolutionListOutput;
 
-public class HybridFGBMLwithMAPElitesIV <S extends PittsburghSolution<?>>
+public class MEFCIV <S extends PittsburghSolution<?>>
   extends AbstractEvolutionaryAlgorithm<S, List<S>>
   implements ObservableEntity {
 
@@ -91,7 +91,7 @@ public class HybridFGBMLwithMAPElitesIV <S extends PittsburghSolution<?>>
   // ================================
 
   /** Constructor */
-  public HybridFGBMLwithMAPElitesIV(
+  public MEFCIV(
       /* Arguments */
       DataSet<?> train,
       Problem<S> problem,
@@ -125,7 +125,7 @@ public class HybridFGBMLwithMAPElitesIV <S extends PittsburghSolution<?>>
     this.evaluation = new SequentialEvaluation<>();
 
     this.algorithmStatusData = new HashMap<>();
-    this.observable = new DefaultObservable<>("Hybrid FGBML with MAP-Elites algorithm");
+    this.observable = new DefaultObservable<>("MEFCIV");
   }
 
   @Override
@@ -460,12 +460,12 @@ public class HybridFGBMLwithMAPElitesIV <S extends PittsburghSolution<?>>
 
   @Override
   public String getName() {
-    return "Hybrid-style FGBML with MAP-Elites";
+    return "MEFCIV";
   }
 
   @Override
   public String getDescription() {
-    return "Hybrid-style Fuzzy Genetics-Based Machine Learning with MAP-Elites";
+    return "MEFCIV";
   }
 
   public Map<String, Object> getAlgorithmStatusData() {

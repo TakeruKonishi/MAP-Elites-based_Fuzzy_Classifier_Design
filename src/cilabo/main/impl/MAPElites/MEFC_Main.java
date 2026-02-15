@@ -36,6 +36,7 @@ import cilabo.fuzzy.rule.impl.Rule_Basic;
 import cilabo.gbml.objectivefunction.michigan.RuleLength;
 import cilabo.gbml.objectivefunction.pittsburgh.AverageSingleWinnerRuleLength;
 import cilabo.gbml.objectivefunction.pittsburgh.ErrorRate;
+import cilabo.gbml.objectivefunction.pittsburgh.ErrorRateNoSideEffect;
 import cilabo.gbml.objectivefunction.pittsburgh.NumberOfRules;
 import cilabo.gbml.operator.crossover.HybridGBMLcrossover;
 import cilabo.gbml.operator.crossover.MichiganCrossover;
@@ -51,19 +52,19 @@ import cilabo.utility.Parallel;
 import cilabo.utility.Random;
 import xml.XML_manager;
 
-public class FGBML_MAPElites_Main {
+public class MEFC_Main {
 	public static void main(String[] args) throws JMetalException, FileNotFoundException {
 		String sep = File.separator;
 
 		/* ********************************************************* */
 		System.out.println();
 		System.out.println("==== INFORMATION ====");
-		System.out.println("main: " + FGBML_MAPElites_Main.class.getCanonicalName());
+		System.out.println("main: " + MEFC_Main.class.getCanonicalName());
 		String version = "1.0";
 		System.out.println("version: " + version);
 		System.out.println();
-		System.out.println("Algorithm: Hybrid-style Fuzzy Genetics-based Machine Learning");
-		System.out.println("IA: MAP-Elites");
+		System.out.println("Algorithm: MAP-Elites-based Fuzzy Classifier Design");
+		System.out.println("EA: MAP-Elites");
 		System.out.println();
 		/* ********************************************************* */
 		// Load consts.properties
@@ -73,15 +74,15 @@ public class FGBML_MAPElites_Main {
 
 
 		// set command arguments to static variables
-		FGBML_MAPElites_CommandLineArgs.loadArgs(FGBML_MAPElites_CommandLineArgs.class.getCanonicalName(), args);
+		MEFC_CommandLineArgs.loadArgs(MEFC_CommandLineArgs.class.getCanonicalName(), args);
 		// Output constant parameters
 		String fileName = Consts.EXPERIMENT_ID_DIR + sep + "Consts.txt";
 		Output.writeln(fileName, Consts.getString(), true);
-		Output.writeln(fileName, FGBML_MAPElites_CommandLineArgs.getParamsString(), true);
+		Output.writeln(fileName, MEFC_CommandLineArgs.getParamsString(), true);
 		XML_manager.getInstance().addElement(XML_manager.getInstance().getRoot(), Consts.toElement());
 
 		// Initialize ForkJoinPool
-		Parallel.getInstance().initLearningForkJoinPool(FGBML_MAPElites_CommandLineArgs.parallelCores);
+		Parallel.getInstance().initLearningForkJoinPool(MEFC_CommandLineArgs.parallelCores);
 
 		System.out.println("Processors: " + Runtime.getRuntime().availableProcessors() + " ");
 		System.out.print("args: ");
@@ -104,15 +105,15 @@ public class FGBML_MAPElites_Main {
 		JMetalRandom.getInstance().setSeed(Consts.RAND_SEED);
 
 		/* Load Dataset ======================== */
-		Input.loadTrainTestFiles_Basic(FGBML_MAPElites_CommandLineArgs.trainFile, FGBML_MAPElites_CommandLineArgs.testFile);
+		Input.loadTrainTestFiles_Basic(MEFC_CommandLineArgs.trainFile, MEFC_CommandLineArgs.testFile);
 		DataSet<Pattern_Basic> train = (DataSet<Pattern_Basic>) DataSetManager.getInstance().getTrains().get(0);
 		DataSet<Pattern_Basic> test = (DataSet<Pattern_Basic>) DataSetManager.getInstance().getTests().get(0);
 
 		/** XML ファイル出力用インスタンスの生成*/
 		XML_manager.getInstance();
 
-		/* Run FGBML algorithm =============== */
-		HybridStyleFGBML(train, test);
+		/* Run MEFC algorithm =============== */
+		MEFC(train, test);
 		/* ===================================== */
 
 		try {
@@ -131,7 +132,7 @@ public class FGBML_MAPElites_Main {
 	/**
 	 *
 	 */
-	public static void HybridStyleFGBML (DataSet<Pattern_Basic> train, DataSet<Pattern_Basic> test) {
+	public static void MEFC (DataSet<Pattern_Basic> train, DataSet<Pattern_Basic> test) {
 		Random.getInstance().initRandom(Consts.RAND_SEED);
 		String sep = File.separator;
 
@@ -164,7 +165,7 @@ public class FGBML_MAPElites_Main {
 
 		/* Optimization Problem */
 		Problem<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> problem =
-				new PittsburghFGBML_MAPElites<MichiganSolution_Basic<Rule_Basic>>(
+				new PittsburghMEFC<MichiganSolution_Basic<Rule_Basic>>(
 						numberOfvariables_Pittsburgh,
 						numberOfObjectives_Pittsburgh,
 						numberOfConstraints_Pittsburgh,
@@ -193,9 +194,9 @@ public class FGBML_MAPElites_Main {
 		Termination termination = new TerminationByEvaluations(Consts.TERMINATE_EVALUATION);
 
 
-		/* Algorithm: Hybrid-style FGBML with MAP-Elites */
-		HybridFGBMLwithMAPElitesV<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
-			= new HybridFGBMLwithMAPElitesV<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(train,problem,
+		/* Algorithm: MEFC */
+		MEFCV<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
+			= new MEFCV<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(train,problem,
 											Consts.POPULATION_SIZE,
 											Consts.OFFSPRING_POPULATION_SIZE,
 											Consts.OUTPUT_FREQUENCY,
@@ -227,6 +228,10 @@ public class FGBML_MAPElites_Main {
             AverageSingleWinnerRuleLength<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> ASWRLfunc = new AverageSingleWinnerRuleLength<>();
             double ASWRL_tra = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) FinalSolutions.get(i), train);
             double ASWRL_tst = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) FinalSolutions.get(i), test);
+            int ndim_tra = train.getNdim();
+            ASWRL_tra = (ndim_tra > 0) ? (ASWRL_tra / (double)ndim_tra) : 0.0;
+            int ndim_tst = train.getNdim();
+            ASWRL_tst = (ndim_tst > 0) ? (ASWRL_tst / (double)ndim_tst) : 0.0;
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLength = 0;
             for (int j = 0; j < FinalSolutions.get(i).getNumberOfVariables(); j++) {
@@ -279,8 +284,8 @@ public class FGBML_MAPElites_Main {
             double AveRW = TotalRW/(FinalSolutions.get(i).getNumberOfVariables());
 
 
-            ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function1
-			= new ErrorRate<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
+            ErrorRateNoSideEffect<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> function1
+			= new ErrorRateNoSideEffect<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>();
 		    double errorRatetest = function1.function(FinalSolutions.get(i), test);
 
 	    	str = String.valueOf(i);

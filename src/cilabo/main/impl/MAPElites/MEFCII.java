@@ -2,7 +2,6 @@ package cilabo.main.impl.MAPElites;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,7 +41,8 @@ import cilabo.gbml.solution.pittsburghSolution.PittsburghSolution;
 import cilabo.main.Consts;
 import cilabo.util.fileoutput.PittsburghSolutionListOutput;
 
-public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
+//セルの粗さ調整＋近傍個体での交叉の実装
+public class MEFCII <S extends PittsburghSolution<?>>
 	extends AbstractEvolutionaryAlgorithm<S, List<S>>
 	implements ObservableEntity {
 
@@ -70,8 +70,14 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 
 	private Observable<Map<String, Object>> observable;
 
+	// 既存のフィールドと初期化コードに加え、新しいフィールドを追加
+    private boolean isFineGrainedPhase; // 現在のセル分割状態を示す
+    private int coarseGridWidth; // 初期段階での粗いセル幅
+    private int fineGridWidth; // 後半段階での細かいセル幅
+    private int generationThreshold; // セル切り替え世代数の閾値
+
 	/** Constructor */
-	public HybridFGBMLwithMAPElites(
+	public MEFCII(
 			/* Arguments */
 			Problem<S> problem,
 			int populationSize,
@@ -104,7 +110,12 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 		this.evaluation = new SequentialEvaluation<>();
 
 		this.algorithmStatusData = new HashMap<>();
-		this.observable = new DefaultObservable<>("Hybrid FGBML with MAP-Elites algorithm");
+		this.observable = new DefaultObservable<>("MEFCII");
+
+		this.isFineGrainedPhase = false;
+		this.coarseGridWidth = 2;
+		this.fineGridWidth = 1;
+	    this.generationThreshold = Consts.TERMINATE_EVALUATION/2;
 
 	}
 
@@ -121,9 +132,7 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
         //各セルのエリート個体を保持するためのマップ
         Map<Pair<Integer,Integer>, S> eliteMap = new LinkedHashMap<>();
 
-        //グリッド幅の設定
-        int ruleNumGridWidth = 1;  //ルール数のグリッド幅
-        int ruleLengthGridWidth = 1;  //総ルール長のグリッド幅
+        int currentGridWidth = coarseGridWidth; // 初期は粗いセル
 
 		/* Step 1. 初期個体群生成 - Initialization Population */
 		population = createInitialPopulation();
@@ -133,7 +142,7 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 		population = removeNoWinnerMichiganSolution(population);
 
 		// 初期個体群をマッピングしてエリート選択
-        updateEliteMap(population, eliteMap, ruleNumGridWidth, ruleLengthGridWidth);
+        updateEliteMap(population, eliteMap, currentGridWidth);
 
         // エリート個体のみを含むリストを更新
         population = new ArrayList<>(eliteMap.values());
@@ -154,18 +163,21 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 		/* GA loop */
 		while(!isStoppingConditionReached()) {
 
-			// エリート個体のみを含むリストを更新
-	        population = new ArrayList<>(eliteMap.values());
-	        // 親個体選択
-	        matingPopulation = selectMatingPopulation(population, ruleNumGridWidth, ruleLengthGridWidth);
-			/* 子個体群生成 - Offspring Generation */
+            if (evaluations >= generationThreshold && !isFineGrainedPhase) {
+                // 細かいセルに切り替え
+                isFineGrainedPhase = true;
+                currentGridWidth = fineGridWidth;
+                eliteMap.clear(); // 古いエリートをクリア
+                updateEliteMap(population, eliteMap, currentGridWidth); // 新しい粒度でリマップ
+            }
+
+			population = new ArrayList<>(eliteMap.values());
+            matingPopulation = selectMatingPopulation(population, currentGridWidth);
             offspringPopulation = reproduction(matingPopulation);
-			/* 子個体群評価 - Offspring Evaluation */
             offspringPopulation = evaluatePopulation(offspringPopulation);
-			/* 未勝利個体削除*/
             offspringPopulation = removeNoWinnerMichiganSolution(offspringPopulation);
 
-            updateEliteMap(offspringPopulation, eliteMap, ruleNumGridWidth, ruleLengthGridWidth);
+            updateEliteMap(offspringPopulation, eliteMap, currentGridWidth);
 
             // エリート個体のみを含むリストを更新
             population = new ArrayList<>(eliteMap.values());
@@ -179,7 +191,7 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 	}
 
 	// エリートマップを更新するメソッド
-    private void updateEliteMap(List<S> solutions, Map<Pair<Integer, Integer>, S> eliteMap, int ruleNumGridWidth, int ruleLengthGridWidth) {
+    private void updateEliteMap(List<S> solutions, Map<Pair<Integer, Integer>, S> eliteMap, int gridWidth) {
         for (S solution : solutions) {
             double ruleNum = new NumberOfRules<S>().function(solution);
             double totalRuleLength = 0;
@@ -188,8 +200,17 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
                     (MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
             }
 
-            int ruleNumIndex = (int)(ruleNum/ruleNumGridWidth);
-            int ruleLengthIndex = (int)(totalRuleLength/ruleLengthGridWidth);
+            int ruleNumIndex;
+            int ruleLengthIndex;
+
+            if (gridWidth == fineGridWidth) {
+                // 細かいセルの場合は元の切り捨てに戻す
+            	ruleNumIndex = (int)(ruleNum/gridWidth);
+                ruleLengthIndex = (int)(totalRuleLength/gridWidth);
+            } else {
+                ruleNumIndex = Math.min((int)(ruleNum/gridWidth), (int)(Consts.MAX_RULE_NUM / gridWidth) - 1);
+                ruleLengthIndex = (int)(totalRuleLength/gridWidth);
+            }
 
             Pair<Integer, Integer> key = Pair.of(ruleNumIndex, ruleLengthIndex);
 
@@ -203,7 +224,8 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
         }
     }
 
-    private List<S> selectMatingPopulation(List<S> population, int ruleNumGridWidth, int ruleLengthGridWidth) {
+    // 近傍交叉とランダム交叉を適用した選択メソッド
+    private List<S> selectMatingPopulation(List<S> population, int gridWidth) {
         List<S> matingPool = new ArrayList<>();
         BoundedRandomGenerator<Integer> randomGenerator = (a, b) -> JMetalRandom.getInstance().nextInt(a, b);
 
@@ -212,17 +234,17 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
         matingPool.add(parent1);
 
         // 常にランダム交叉
-        int parentIndex2;
+        /*int parentIndex2;
         do {
             parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
         } while (parentIndex1 == parentIndex2);
-        matingPool.add(population.get(parentIndex2));
+        matingPool.add(population.get(parentIndex2));*/
 
         // 近傍のセルから2つ目の親を選択
-        /*Pair<Integer, Integer> parent1Key = getGridKey(parent1, ruleNumGridWidth, ruleLengthGridWidth);
-        List<S> neighbors = getNeighborSolutions(parent1Key, population, ruleNumGridWidth, ruleLengthGridWidth);
+        Pair<Integer, Integer> parent1Key = getGridKey(parent1, gridWidth);
+        List<S> neighbors = getNeighborSolutions(parent1Key, population, gridWidth);
 
-        if (!neighbors.isEmpty() && JMetalRandom.getInstance().nextDouble() < 0.5) {
+        if (!neighbors.isEmpty() && isFineGrainedPhase && JMetalRandom.getInstance().nextDouble() < 0.75) {
             // 近傍交叉
             S parent2 = neighbors.get(randomGenerator.getRandomValue(0, neighbors.size() - 1));
             matingPool.add(parent2);
@@ -233,39 +255,46 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
                 parentIndex2 = randomGenerator.getRandomValue(0, population.size() - 1);
             } while (parentIndex1 == parentIndex2);
             matingPool.add(population.get(parentIndex2));
-        }*/
+        }
 
         return matingPool;
     }
 
     // 近傍の解を取得
-    private List<S> getNeighborSolutions(Pair<Integer, Integer> key, List<S> population, int ruleNumGridWidth, int ruleLengthGridWidth) {
+    private List<S> getNeighborSolutions(Pair<Integer, Integer> key, List<S> population, int gridWidth) {
         List<S> neighbors = new ArrayList<>();
         for (S solution : population) {
-            Pair<Integer, Integer> solutionKey = getGridKey(solution, ruleNumGridWidth, ruleLengthGridWidth);
+            Pair<Integer, Integer> solutionKey = getGridKey(solution, gridWidth);
             if (Math.abs(solutionKey.getLeft() - key.getLeft()) <= 5 &&
                 Math.abs(solutionKey.getRight() - key.getRight()) <= 5) {
-            	neighbors.add(solution);
+                neighbors.add(solution);
             }
         }
         return neighbors;
     }
 
     // 解のグリッドキーを取得
-    private Pair<Integer, Integer> getGridKey(S solution, int ruleNumGridWidth, int ruleLengthGridWidth) {
+    private Pair<Integer, Integer> getGridKey(S solution, int gridWidth) {
         double ruleNum = new NumberOfRules<S>().function(solution);
         double totalRuleLength = 0;
         for (int i = 0; i < solution.getNumberOfVariables(); i++) {
             totalRuleLength += new RuleLength<MichiganSolution_Basic<Rule_Basic>>().function(
                 (MichiganSolution_Basic<Rule_Basic>) solution.getVariable(i));
         }
+        int ruleNumIndex;
+        int ruleLengthIndex;
 
-        int ruleNumIndex = (int)(ruleNum/ruleNumGridWidth);
-        int ruleLengthIndex = (int)(totalRuleLength/ruleLengthGridWidth);
+        if (gridWidth == fineGridWidth) {
+            // 細かいセルの場合は元の切り捨てに戻す
+        	ruleNumIndex = (int)(ruleNum/gridWidth);
+            ruleLengthIndex = (int)(totalRuleLength/gridWidth);
+        } else {
+        	ruleNumIndex = Math.min((int)(ruleNum/gridWidth), (int)(Consts.MAX_RULE_NUM / gridWidth) - 1);
+            ruleLengthIndex = (int)(totalRuleLength/gridWidth);
+        }
 
         return Pair.of(ruleNumIndex, ruleLengthIndex);
     }
-
 
 	@Override
 	protected void initProgress() {
@@ -413,12 +442,12 @@ public class HybridFGBMLwithMAPElites <S extends PittsburghSolution<?>>
 
 	@Override
 	public String getName() {
-		return "Hybrid-style FGBML with MAP-Elites";
+		return "MEFCII";
 	}
 
 	@Override
 	public String getDescription() {
-		return "Hybrid-style Fuzzy Genetics-Based Machine Learning with MAP-Elites";
+		return "MEFCII";
 	}
 
 	public Map<String, Object> getAlgorithmStatusData() {

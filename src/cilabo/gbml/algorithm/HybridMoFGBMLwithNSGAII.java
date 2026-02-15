@@ -51,6 +51,7 @@ import cilabo.gbml.problem.pittsburghFGBML_Problem.AbstractPittsburghFGBML;
 import cilabo.gbml.solution.michiganSolution.impl.MichiganSolution_Basic;
 import cilabo.gbml.solution.pittsburghSolution.PittsburghSolution;
 import cilabo.gbml.solution.pittsburghSolution.impl.PittsburghSolution_Basic;
+import cilabo.main.ExperienceParameter.OBJECTIVES_FOR_PITTSBURGH;
 import cilabo.util.fileoutput.PittsburghSolutionListOutput;
 import xml.XML_TagName;
 import xml.XML_manager;
@@ -165,8 +166,10 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
         Map<Pair<Integer,Integer>, S> eliteMap = new LinkedHashMap<>();
 
         //グリッド幅の設定
-        double globalGridWidth = 1;  //ルール数のグリッド幅
-        double localGridWidth = 0.2;  //平均単一勝利ルール長のグリッド幅
+        final int bins = 50;
+        final int maxGridindex = bins - 1;
+        double globalGridWidth = 1.0;  //解釈可能性指標のグリッド幅
+        double localGridWidth = 1.0/bins;  //説明可能性指標のグリッド幅
 
 		/* Step 1. 初期個体群生成 - Initialization Population */
 		population = createInitialPopulation();
@@ -178,11 +181,14 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 		//初期個体群を特徴空間にマッピングし，エリートを選択
         for (S solution : population) {
 
-        	double ruleNum = ruleNumfunc.function(solution);
-            double ASWRL = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) solution, train);
+        	double ruleNum = solution.getObjective(OBJECTIVES_FOR_PITTSBURGH.NumberOfRule.toInt());
+            double normASWRL = solution.getObjective(2);
 
-            int globalIndex = (int)(ruleNum/globalGridWidth);
-            int localIndex = (int)(ASWRL/localGridWidth);
+            int globalIndex = (int)Math.floor((ruleNum - 1.0) / globalGridWidth);
+            globalIndex = Math.max(0, Math.min(maxGridindex, globalIndex));
+
+            int localIndex = (int)Math.floor(normASWRL / localGridWidth);
+            localIndex = Math.max(0, Math.min(maxGridindex, localIndex));
 
             //グリッド座標をキーとする
             Pair<Integer, Integer> key = Pair.of(globalIndex, localIndex);
@@ -225,11 +231,14 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 			//子個体群を特徴空間にマッピングし，エリートを選択
 			for (S solution : offspringPopulation) {
 
-	            double ruleNum = ruleNumfunc.function(solution);
-	            double ASWRL = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) solution, train);
+	        	double ruleNum = solution.getObjective(OBJECTIVES_FOR_PITTSBURGH.NumberOfRule.toInt());
+	            double normASWRL = solution.getObjective(2);
 
-	            int globalIndex = (int)(ruleNum/globalGridWidth);
-	            int localIndex = (int)(ASWRL/localGridWidth);
+	            int globalIndex = (int)Math.floor((ruleNum - 1.0) / globalGridWidth);
+	            globalIndex = Math.max(0, Math.min(maxGridindex, globalIndex));
+
+	            int localIndex = (int)Math.floor(normASWRL / localGridWidth);
+	            localIndex = Math.max(0, Math.min(maxGridindex, localIndex));
 
 	            //グリッド座標をキーとする
 	            Pair<Integer, Integer> key = Pair.of(globalIndex, localIndex);
