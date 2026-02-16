@@ -116,7 +116,9 @@ public class MichiganCrossover <pittsburghSolution extends PittsburghSolution<mi
 		/* Step 3. Heuristic Rule Generation */
 		if( 0<numberOfHeuristic ) {
 			@SuppressWarnings("unchecked")
-			List<Pattern<?>> erroredPatterns = (ArrayList<Pattern<?>>) parent.getAttribute(new ErroredPatternsAttribute<>().getAttributeId());
+			//List<Pattern<?>> erroredPatterns = (ArrayList<Pattern<?>>) parent.getAttribute(new ErroredPatternsAttribute<>().getAttributeId());
+			List<Pattern<?>> base = (ArrayList<Pattern<?>>) parent.getAttribute(new ErroredPatternsAttribute<>().getAttributeId());
+		    List<Pattern<?>> erroredPatterns = (base == null) ? new ArrayList<>() : new ArrayList<>(base);
 			//誤識別パターンが足りないor無い場合は，ランダムなパターンをリストに追加
 			int NumberOfLack = numberOfHeuristic - erroredPatterns.size();
 			for(int i = 0; i < NumberOfLack; i++) {

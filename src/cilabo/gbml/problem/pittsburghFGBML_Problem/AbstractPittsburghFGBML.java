@@ -47,9 +47,9 @@ public abstract class AbstractPittsburghFGBML <pittsburghSolutionObject extends 
 				solution.removeVariable(i); i--;
 			}
 		}
-		/*NumberOfRules<PittsburghSolution<michiganSolution>> function2 = new NumberOfRules<PittsburghSolution<michiganSolution>>();
+		NumberOfRules<PittsburghSolution<michiganSolution>> function2 = new NumberOfRules<PittsburghSolution<michiganSolution>>();
 		double f2 = function2.function(solution);
-		solution.setObjective(OBJECTIVES_FOR_PITTSBURGH.NumberOfRule.toInt(), f2);*/
+		solution.setObjective(OBJECTIVES_FOR_PITTSBURGH.NumberOfRule.toInt(), f2);
 
 		/*RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
         double TotalRuleLength = 0;

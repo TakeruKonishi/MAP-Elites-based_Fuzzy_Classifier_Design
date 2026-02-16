@@ -195,8 +195,8 @@ public class MEFC_Main {
 
 
 		/* Algorithm: MEFC */
-		MEFCV<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
-			= new MEFCV<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(train,problem,
+		MEFCIII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>> algorithm
+			= new MEFCIII<PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>>(train,problem,
 											Consts.POPULATION_SIZE,
 											Consts.OFFSPRING_POPULATION_SIZE,
 											Consts.OUTPUT_FREQUENCY,
