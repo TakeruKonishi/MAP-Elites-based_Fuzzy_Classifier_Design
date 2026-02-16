@@ -230,7 +230,7 @@ public class MEFC_Main {
             double ASWRL_tst = ASWRLfunc.function((PittsburghSolution_Basic<MichiganSolution_Basic<Rule_Basic>>) FinalSolutions.get(i), test);
             int ndim_tra = train.getNdim();
             ASWRL_tra = (ndim_tra > 0) ? (ASWRL_tra / (double)ndim_tra) : 0.0;
-            int ndim_tst = train.getNdim();
+            int ndim_tst = test.getNdim();
             ASWRL_tst = (ndim_tst > 0) ? (ASWRL_tst / (double)ndim_tst) : 0.0;
             RuleLength<MichiganSolution_Basic<Rule_Basic>> RuleLengthFunc = new RuleLength<MichiganSolution_Basic<Rule_Basic>>();
             double TotalRuleLength = 0;
