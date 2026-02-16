@@ -64,7 +64,7 @@ import xml.XML_manager;
 /**
  * @version 1.0
  *
- * FAN2021時点
+ *
  */
 public class MoFGBML_Basic_Main {
 	public static void main(String[] args) throws JMetalException, FileNotFoundException {

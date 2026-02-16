@@ -214,18 +214,18 @@ public class MEFCIII <S extends PittsburghSolution<?>>
             // アーカイブ更新（更新があれば true）
             boolean improved = updateEliteMap(offspringPopulation, eliteMap, GLOBAL_GRID_WIDTH, LOCAL_GRID_WIDTH);
 
-           //親回数の加算（親1は必ず、親2は usedP2 のときだけ）
-           registerPull(lastKey1);
-           if (usedP2 && lastKey2 != null && !lastKey2.equals(lastKey1)) {
-             registerPull(lastKey2);
-           }
+            //親回数の加算（親1は必ず、親2は usedP2 のときだけ）
+            registerPull(lastKey1);
+            if (usedP2 && lastKey2 != null && !lastKey2.equals(lastKey1)) {
+                registerPull(lastKey2);
+            }
 
-           //平均報酬（2値報酬：更新あり=1, なし=0）
-           double r = improved ? 1.0 : 0.0;
-           applyReward(lastKey1, r);
-           if (usedP2 && lastKey2 != null && !lastKey2.equals(lastKey1)) {
-             applyReward(lastKey2, r);
-           }
+            //平均報酬（2値報酬：更新あり=1, なし=0）
+            double r = improved ? 1.0 : 0.0;
+            applyReward(lastKey1, r);
+            if (usedP2 && lastKey2 != null && !lastKey2.equals(lastKey1)) {
+                applyReward(lastKey2, r);
+            }
 
             // エリート個体のみを含むリストを更新
             population = new ArrayList<>(eliteMap.values());

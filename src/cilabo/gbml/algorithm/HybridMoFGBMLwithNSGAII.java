@@ -186,7 +186,6 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
             int globalIndex = (int)Math.floor((ruleNum - 1.0) / globalGridWidth);
             globalIndex = Math.max(0, Math.min(maxGridindex, globalIndex));
-
             int localIndex = (int)Math.floor(normASWRL / localGridWidth);
             localIndex = Math.max(0, Math.min(maxGridindex, localIndex));
 
@@ -236,7 +235,6 @@ public class HybridMoFGBMLwithNSGAII <S extends PittsburghSolution<?>>
 
 	            int globalIndex = (int)Math.floor((ruleNum - 1.0) / globalGridWidth);
 	            globalIndex = Math.max(0, Math.min(maxGridindex, globalIndex));
-
 	            int localIndex = (int)Math.floor(normASWRL / localGridWidth);
 	            localIndex = Math.max(0, Math.min(maxGridindex, localIndex));
 
